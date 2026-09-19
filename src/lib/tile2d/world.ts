@@ -132,7 +132,7 @@ export function buildWorld(route: Route, seed: string): World {
   props.push({ kind: "sign", x: cells[0].x - 1, y: cells[0].y, step: 0 });
 
   // 6) 집: 경로를 따라 25칸마다 옆으로 3~6칸 떨어진 곳
-  for (let i = 12; i < cells.length; i += 25) {
+  for (let i = 12; i < cells.length; i += 40) {
     const c = cells[i];
     const n = cells[Math.min(i + 1, cells.length - 1)];
     const dx = n.x - c.x, dy = n.y - c.y;
@@ -143,7 +143,7 @@ export function buildWorld(route: Route, seed: string): World {
       props.push({ kind: "block", x: hx, y: hy, rows: rnd() < 0.5 ? TILE.houseGrey : TILE.houseRed });
       take(hx, hy, 3, 4);
       // 집 앞 울타리 가끔
-      if (rnd() < 0.5 && free(hx, hy + 5, 3, 1)) {
+      if (rnd() < 0.3 && free(hx, hy + 5, 3, 1)) {
         props.push({ kind: "tile", x: hx, y: hy + 5, id: TILE.fenceL });
         props.push({ kind: "tile", x: hx + 1, y: hy + 5, id: TILE.fenceM });
         props.push({ kind: "tile", x: hx + 2, y: hy + 5, id: TILE.fenceR });
@@ -154,7 +154,7 @@ export function buildWorld(route: Route, seed: string): World {
 
   // 7) 숲 덩어리 (경로에서 좀 떨어진 곳) + 나무/덤불 흩뿌리기
   const W = bounds.maxX - bounds.minX, H = bounds.maxY - bounds.minY;
-  const forests = Math.floor((W * H) / 220);
+  const forests = Math.floor((W * H) / 600);
   for (let i = 0; i < forests; i++) {
     const x = bounds.minX + Math.floor(rnd() * W), y = bounds.minY + Math.floor(rnd() * H);
     if (free(x, y, 2, 3)) {
@@ -162,10 +162,16 @@ export function buildWorld(route: Route, seed: string): World {
       take(x, y, 2, 3);
     }
   }
-  const singles = Math.floor((W * H) / 26);
+  const nearPath = (x: number, y: number, r: number) => {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (pathSet.has(key(x + dx, y + dy))) return true;
+    return false;
+  };
+  const singles = Math.floor((W * H) / 90);
   for (let i = 0; i < singles; i++) {
     const x = bounds.minX + Math.floor(rnd() * W), y = bounds.minY + Math.floor(rnd() * H);
     const r = rnd();
+    // 경로에서 3칸 이내는 비워서 길이 잘 보이게
+    if (nearPath(x, y, 3)) continue;
     if (r < 0.45 && free(x, y, 1, 2)) {
       const green = rnd() < 0.75;
       props.push({ kind: "block", x, y, rows: green ? [[TILE.treeGreenTop], [TILE.treeGreenBottom]] : [[TILE.treeYellowTop], [TILE.treeYellowBottom]] });
@@ -180,7 +186,7 @@ export function buildWorld(route: Route, seed: string): World {
   // 8) 바닥: 결정적 해시로 잔디 변형
   const ground = (x: number, y: number) => {
     const h = hashString(`${seed}:${x}:${y}`) % 100;
-    return h < 5 ? TILE.grassFlower : h < 16 ? TILE.grassTuft : TILE.grass;
+    return h < 2 ? TILE.grassFlower : h < 8 ? TILE.grassTuft : TILE.grass;
   };
 
   return { track, cells, pathToCell, pathSet, bounds, ground, props, destHouse, occupied };

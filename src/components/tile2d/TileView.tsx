@@ -201,6 +201,8 @@ export default function TileView({ route, seed, me, sheetSrc = "/tiles/tiny-town
     type Item = { z: number; draw: () => void };
     const items: Item[] = [];
     const labels: Array<() => void> = []; // 이름표는 맨 위에
+    const LABEL_R = 8; // 캐릭터에서 이 거리(칸) 안의 이름표만 보여준다
+    const nearChar = (x: number, y: number) => Math.hypot(x - ch.x, y - ch.y) <= LABEL_R;
     for (const p of world.props) {
       if (p.kind === "block") {
         const h = p.rows.length, w = p.rows[0].length;
@@ -214,7 +216,7 @@ export default function TileView({ route, seed, me, sheetSrc = "/tiles/tiny-town
         items.push({ z: p.y + 1, draw: () => tile(83, p.x, p.y) });
         const step = route.steps[p.step];
         const text = step ? (p.step === 0 ? "🚩 출발" : `${TURN_ICON[step.turn]} ${step.description.slice(0, 14)}`) : "";
-        if (text) labels.push(() => plate(text, p.x * TS - camX + TS / 2, p.y * TS - camY + 2 * S));
+        if (text && nearChar(p.x, p.y)) labels.push(() => plate(text, p.x * TS - camX + TS / 2, p.y * TS - camY + 2 * S));
       } else if (p.kind === "heart") {
         const bob = Math.sin(performance.now() / 300) * 2;
         items.push({ z: 9999, draw: () => ctx.drawImage(chars.heart, Math.round(p.x * TS - camX), Math.round(p.y * TS - camY + bob * S), TS, TS) });
@@ -223,7 +225,7 @@ export default function TileView({ route, seed, me, sheetSrc = "/tiles/tiny-town
     for (const m of marksRef.current) {
       if (m.x < x0 || m.x > x1 || m.y < y0 || m.y > y1) continue;
       items.push({ z: m.y + 1, draw: () => tile(83, m.x, m.y) });
-      labels.push(() => plate(m.label, m.x * TS - camX + TS / 2, m.y * TS - camY + 2 * S));
+      if (nearChar(m.x, m.y)) labels.push(() => plate(m.label, m.x * TS - camX + TS / 2, m.y * TS - camY + 2 * S));
     }
     items.push({
       z: ch.y + 1,
