@@ -3,9 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "@/lib/route/types";
 import { makeWalker } from "@/lib/walk";
-import { dirFromBearing, type Dir } from "@/lib/charSprite";
+import { dirFromBearing, type Dir, type Vehicle } from "@/lib/charSprite";
 
-export type CharacterPose = { lat: number; lng: number; dir: Dir; frame: number };
+export type CharacterPose = { lat: number; lng: number; dir: Dir; frame: number; vehicle?: Vehicle };
+
+/** route.path 인덱스가 어느 구간(도보/버스/지하철)에 속하는지 */
+export function vehicleAtIndex(route: Route, index: number): Vehicle | undefined {
+  const leg = route.legs?.find((l) => index >= l.pathStart && index < l.pathEnd);
+  return leg?.mode === "bus" || leg?.mode === "subway" ? leg.mode : undefined;
+}
 
 /**
  * 경로를 따라 캐릭터를 자동으로 걷게 하는 재생기.
@@ -51,10 +57,19 @@ export function useWalkPlayback(route: Route | null, enabled: boolean) {
   }, [enabled, walker, playing, speed]);
 
   const pose: CharacterPose | null = useMemo(() => {
-    if (!walker) return null;
+    if (!walker || !route) return null;
     const p = walker.at(dist);
-    return { lat: p.lat, lng: p.lng, dir: dirFromBearing(p.bearing), frame: Math.floor(dist / 3) % 2 };
-  }, [walker, dist]);
+    const vehicle = vehicleAtIndex(route, p.index);
+    // 차량은 옆모습이라 좌/우만 구분, 흔들림 프레임은 거리 기준
+    const dir = dirFromBearing(p.bearing);
+    return {
+      lat: p.lat,
+      lng: p.lng,
+      dir: vehicle ? (dir === "left" || dir === "up" ? "left" : "right") : dir,
+      frame: Math.floor(dist / (vehicle ? 20 : 3)) % 2,
+      vehicle,
+    };
+  }, [walker, route, dist]);
 
   return {
     pose,

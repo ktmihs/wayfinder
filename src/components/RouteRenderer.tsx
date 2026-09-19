@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import KakaoMap from "@/components/KakaoMap";
 import PlaybackBar from "@/components/PlaybackBar";
-import { useWalkPlayback, type CharacterPose } from "@/lib/useWalkPlayback";
+import { useWalkPlayback, vehicleAtIndex, type CharacterPose } from "@/lib/useWalkPlayback";
 import { dirFromBearing } from "@/lib/charSprite";
 import { bearing } from "@/lib/walk";
 import RouteSteps, { TURN_ICON } from "@/components/RouteSteps";
@@ -67,7 +67,7 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
 
   // 캐릭터 안내: 재생 중이면 경로를 따라 걷고, 실시간 안내 중이면 내 위치에 선다
   const playback = useWalkPlayback(route, useCharacter && !navigating);
-  const lastMe = useRef<{ lat: number; lng: number; dir: CharacterPose["dir"]; frame: number } | null>(null);
+  const lastMe = useRef<CharacterPose | null>(null);
   const liveCharacter: CharacterPose | null = useMemo(() => {
     if (!useCharacter || !navigating || !me) return null;
     const prev = lastMe.current;
@@ -75,10 +75,18 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
     const dir =
       me.heading != null ? dirFromBearing(me.heading) : prev && moved > 2 ? dirFromBearing(bearing(prev, me)) : (prev?.dir ?? "down");
     const frame = prev && moved > 1 ? (prev.frame + 1) % 2 : (prev?.frame ?? 0);
-    const next = { lat: me.lat, lng: me.lng, dir, frame };
+    // 대중교통 구간에 있으면 탑승 스프라이트
+    const vehicle = route ? vehicleAtIndex(route, nearestPathIndex(route.path, me).index) : undefined;
+    const next: CharacterPose = {
+      lat: me.lat,
+      lng: me.lng,
+      dir: vehicle ? (dir === "left" || dir === "up" ? "left" : "right") : dir,
+      frame,
+      vehicle,
+    };
     lastMe.current = next;
     return next;
-  }, [useCharacter, navigating, me]);
+  }, [useCharacter, navigating, me, route]);
   const character = useCharacter ? (navigating ? liveCharacter : playback.pose) : null;
 
   // 내 위치 → 경로상 위치 → 현재 구간 / 남은 거리 / 도착 여부

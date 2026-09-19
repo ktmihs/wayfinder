@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { loadKakao } from "@/lib/kakao";
 import type { LatLng } from "@/lib/route/types";
-import { charSpriteUrl, type Dir } from "@/lib/charSprite";
+import { charSpriteUrl, type Dir, type Vehicle } from "@/lib/charSprite";
 
 export type MapPoint = { lat: number; lng: number; label?: string };
 
@@ -21,7 +21,7 @@ type Props = {
   /** true면 내 위치가 바뀔 때마다 지도를 따라 움직인다 */
   follow?: boolean;
   /** 픽셀 캐릭터 (캐릭터 안내 모드). 있으면 내 위치 파란 점 대신 캐릭터를 그린다 */
-  character?: (LatLng & { dir: Dir; frame: number }) | null;
+  character?: (LatLng & { dir: Dir; frame: number; vehicle?: Vehicle }) | null;
   /** 캐릭터 위치에 지도를 맞출지 */
   followCharacter?: boolean;
   className?: string;
@@ -180,7 +180,7 @@ export default function KakaoMap({ destination, origin, path, legs, me, follow, 
         return;
       }
       const pos = new k.maps.LatLng(character.lat, character.lng);
-      const key = `${character.dir}:${character.frame % 2}`;
+      const key = `${character.vehicle ?? "walk"}:${character.dir}:${character.frame % 2}`;
       if (!charRef.current) {
         // 래퍼 크기를 명시해서 이미지 로드 전에도 앵커가 정확히 계산되게 한다.
         // 스프라이트의 발끝은 16px 중 15px 지점 → 48px 기준 45px. 그 지점을 좌표에 맞춘다.
@@ -191,7 +191,7 @@ export default function KakaoMap({ destination, origin, path, legs, me, follow, 
         img.width = SIZE;
         img.height = SIZE;
         img.style.cssText = "display:block;position:absolute;left:0;top:0;image-rendering:pixelated;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35));";
-        img.src = charSpriteUrl(character.dir, character.frame);
+        img.src = charSpriteUrl(character.dir, character.frame, SIZE, character.vehicle);
         wrap.appendChild(img);
         const overlay = new k.maps.CustomOverlay({ position: pos, content: wrap, xAnchor: 0.5, yAnchor: 1, zIndex: 20 });
         overlay.setMap(map);
@@ -199,7 +199,7 @@ export default function KakaoMap({ destination, origin, path, legs, me, follow, 
       } else {
         charRef.current.overlay.setPosition(pos);
         if (charRef.current.key !== key) {
-          charRef.current.img.src = charSpriteUrl(character.dir, character.frame);
+          charRef.current.img.src = charSpriteUrl(character.dir, character.frame, 48, character.vehicle);
           charRef.current.key = key;
         }
       }
