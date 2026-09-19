@@ -18,7 +18,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - `src/app/go/[id]` — 손님: 출발지 입력 → `RouteRenderer`가 `place.mode`에 따라 렌더러 분기
 - `src/lib/modes.ts` — 안내 방식 목록 (map / tile2d / fps3d / video). `ready: false`면 지도로 폴백
 - `src/lib/kakao.ts` — 카카오맵 SDK 로더 + 주소/장소 검색
-- `src/lib/route/` — 공통 경로 JSON(`types.ts`), Tmap 보행자(`tmap.ts`)·OSRM 폴백(`osrm.ts`), `findWalkingRoute`. `/api/route?from=&to=`
+- `src/lib/route/` — 공통 경로 JSON(`types.ts`), Tmap 보행자(`tmap.ts`)·대중교통(`tmapTransit.ts`)·OSRM 폴백(`osrm.ts`). `/api/route?from=&to=&travel=walk|transit`
+- `src/lib/sprites.json` + `charSprite.ts` — 픽셀 캐릭터(4방향 2프레임) → data URL. 캐릭터 안내 모드는 KakaoMap 위 CustomOverlay
+- 2D 타일 마을 지도(tile2d)는 제거됨 — 필요하면 커밋 803385f 참고
 - `src/components/Cover.tsx` — 손님 온보딩 커버 (hostName/eventAt/greeting/imageUrl/theme). 관리자 폼 미리보기에도 재사용
 - `src/lib/supabase.ts` — 서버 전용 Storage 클라이언트 (`covers` 버킷, public). `SUPABASE_URL`/`SUPABASE_SECRET_KEY` 없으면 업로드 비활성
 - `src/lib/db.ts` — Prisma 7 + pg 어댑터 (Supabase Postgres, Session pooler URL). `src/generated/prisma`는 생성물(커밋 안 함)

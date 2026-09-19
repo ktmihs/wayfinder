@@ -1,6 +1,6 @@
 "use client";
 
-import sprites from "@/lib/tile2d/sprites.json";
+import sprites from "@/lib/sprites.json";
 
 export type Dir = "down" | "up" | "left" | "right";
 

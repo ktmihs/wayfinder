@@ -20,7 +20,7 @@ model Place {
   detail      String?           // 동/호수, 공동현관 비밀번호 등 도착 후 안내
   lat         Float
   lng         Float
-  modes       String   @default("map") // 관리자가 허용한 안내 방식들, 쉼표 구분 (map,tile2d,fps3d,video)
+  modes       String   @default("map") // 관리자가 허용한 안내 방식들, 쉼표 구분 (map,character,fps3d,video)
   config      String   @default("{}")  // 모드별 추가 설정 (JSON)
 
   // 온보딩(커버) 화면

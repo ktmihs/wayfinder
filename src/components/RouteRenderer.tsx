@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import KakaoMap from "@/components/KakaoMap";
-import TileView from "@/components/tile2d/TileView";
 import PlaybackBar from "@/components/PlaybackBar";
 import { useWalkPlayback, type CharacterPose } from "@/lib/useWalkPlayback";
 import { dirFromBearing } from "@/lib/charSprite";
@@ -48,8 +47,6 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
   const { status, route, error, ...routeState } = useRoute(origin, destination, travel);
   const errorCode = "code" in routeState ? routeState.code : undefined;
 
-  // 타일 마을 지도는 도보 경로만 (대중교통은 수십 km 라 격자가 너무 커진다)
-  const useTile = mode === "tile2d" && !!route && route.travel === "walk";
   const useCharacter = mode === "character" && !!route;
 
   // 실시간 안내
@@ -135,26 +132,17 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
       )}
 
       <div className="relative">
-        {useTile ? (
-          <TileView
-            route={route}
-            seed={place.id}
-            me={navigating ? me : null}
-            className={origin ? "h-[45vh]" : "h-[55vh]"}
-          />
-        ) : (
-          <KakaoMap
-            destination={destination}
-            origin={origin}
-            path={route?.path}
-            legs={route?.legs}
-            me={me}
-            follow={navigating && follow}
-            character={character}
-            followCharacter={useCharacter && !navigating && playback.playing}
-            className={origin ? "h-[45vh]" : "h-[55vh]"}
-          />
-        )}
+        <KakaoMap
+          destination={destination}
+          origin={origin}
+          path={route?.path}
+          legs={route?.legs}
+          me={me}
+          follow={navigating && follow}
+          character={character}
+          followCharacter={useCharacter && !navigating && playback.playing}
+          className={origin ? "h-[45vh]" : "h-[55vh]"}
+        />
 
         {/* 캐릭터 재생 중 다음 안내 캡션 */}
         {useCharacter && !navigating && route && (() => {
@@ -267,7 +255,7 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
         )}
 
         {/* 따라가기 토글 (지도를 손으로 움직인 뒤 다시 돌아올 때) */}
-        {navigating && me && !useTile && (
+        {navigating && me && (
           <button
             type="button"
             onClick={() => setFollow((f) => !f)}
@@ -294,11 +282,6 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
             </button>
           )}
         </div>
-      )}
-      {mode === "tile2d" && route?.travel === "transit" && (
-        <p className="mx-5 my-3 rounded-xl bg-neutral-100 px-4 py-2.5 text-xs text-neutral-600">
-          🕹️ 마을 지도는 도보 경로에서만 볼 수 있어요. 대중교통은 실제 지도로 보여드려요.
-        </p>
       )}
 
       {/* 안내 방식 선택 (관리자가 여러 개 허용했을 때) */}
