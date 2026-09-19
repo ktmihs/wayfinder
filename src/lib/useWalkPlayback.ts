@@ -30,11 +30,16 @@ export function useWalkPlayback(route: Route | null, enabled: boolean) {
     const base = Math.min(25, Math.max(4, walker.total / 40)); // m/s
     let raf = 0;
     let last = performance.now();
+    let lastRender = 0;
     const tick = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       distRef.current = Math.min(walker.total, distRef.current + dt * base * speed);
-      setDist(distRef.current);
+      // 지도 오버레이/React 갱신은 초당 20번이면 충분하다 (매 프레임 갱신하면 지도가 버벅인다)
+      if (now - lastRender > 50 || distRef.current >= walker.total) {
+        lastRender = now;
+        setDist(distRef.current);
+      }
       if (distRef.current >= walker.total) {
         setPlaying(false);
         return;

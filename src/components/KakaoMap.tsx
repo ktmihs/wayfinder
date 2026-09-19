@@ -37,6 +37,7 @@ export default function KakaoMap({ destination, origin, path, legs, me, follow, 
   const overlaysRef = useRef<Array<{ setMap(map: kakao.maps.Map | null): void }>>([]);
   const meRef = useRef<{ dot: kakao.maps.CustomOverlay; circle: kakao.maps.Circle } | null>(null);
   const charRef = useRef<{ overlay: kakao.maps.CustomOverlay; img: HTMLImageElement; key: string } | null>(null);
+  const panningRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // 최초 1회: 지도 생성
@@ -181,13 +182,18 @@ export default function KakaoMap({ destination, origin, path, legs, me, follow, 
       const pos = new k.maps.LatLng(character.lat, character.lng);
       const key = `${character.dir}:${character.frame % 2}`;
       if (!charRef.current) {
+        // 래퍼 크기를 명시해서 이미지 로드 전에도 앵커가 정확히 계산되게 한다.
+        // 스프라이트의 발끝은 16px 중 15px 지점 → 48px 기준 45px. 그 지점을 좌표에 맞춘다.
+        const SIZE = 48, FEET = 45;
+        const wrap = document.createElement("div");
+        wrap.style.cssText = `width:${SIZE}px;height:${FEET}px;position:relative;pointer-events:none;`;
         const img = document.createElement("img");
-        img.width = 48;
-        img.height = 48;
-        img.style.imageRendering = "pixelated";
-        img.style.filter = "drop-shadow(0 3px 2px rgba(0,0,0,.35))";
+        img.width = SIZE;
+        img.height = SIZE;
+        img.style.cssText = "display:block;position:absolute;left:0;top:0;image-rendering:pixelated;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35));";
         img.src = charSpriteUrl(character.dir, character.frame);
-        const overlay = new k.maps.CustomOverlay({ position: pos, content: img, yAnchor: 0.9, zIndex: 20 });
+        wrap.appendChild(img);
+        const overlay = new k.maps.CustomOverlay({ position: pos, content: wrap, xAnchor: 0.5, yAnchor: 1, zIndex: 20 });
         overlay.setMap(map);
         charRef.current = { overlay, img, key };
       } else {
@@ -197,7 +203,21 @@ export default function KakaoMap({ destination, origin, path, legs, me, follow, 
           charRef.current.key = key;
         }
       }
-      if (followCharacter) map.setCenter(pos);
+
+      // 따라가기: 매번 중심을 옮기지 않고, 캐릭터가 화면 안쪽 60% 영역을 벗어나려 할 때만 부드럽게 이동
+      if (followCharacter && !panningRef.current) {
+        const b = map.getBounds();
+        const sw = b.getSouthWest(), ne = b.getNorthEast();
+        const mLat = (ne.getLat() - sw.getLat()) * 0.2, mLng = (ne.getLng() - sw.getLng()) * 0.2;
+        const inside =
+          character.lat > sw.getLat() + mLat && character.lat < ne.getLat() - mLat &&
+          character.lng > sw.getLng() + mLng && character.lng < ne.getLng() - mLng;
+        if (!inside) {
+          panningRef.current = true;
+          map.panTo(pos);
+          setTimeout(() => (panningRef.current = false), 400);
+        }
+      }
     });
   }, [character, followCharacter]);
 
