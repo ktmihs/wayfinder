@@ -9,7 +9,7 @@ export type CharacterPose = { lat: number; lng: number; dir: Dir; frame: number 
 
 /**
  * 경로를 따라 캐릭터를 자동으로 걷게 하는 재생기.
- * 전체 경로를 약 40초에 걷도록 속도를 잡고, 배속으로 조절한다.
+ * 전체 경로를 약 1분에 걷도록 속도를 잡고, 배속으로 조절한다.
  */
 export function useWalkPlayback(route: Route | null, enabled: boolean) {
   const walker = useMemo(() => (route ? makeWalker(route.path) : null), [route]);
@@ -27,7 +27,7 @@ export function useWalkPlayback(route: Route | null, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled || !walker || !playing) return;
-    const base = Math.min(25, Math.max(4, walker.total / 40)); // m/s
+    const base = Math.min(15, Math.max(3, walker.total / 60)); // m/s — 전체 경로를 약 1분에
     let raf = 0;
     let last = performance.now();
     let lastRender = 0;

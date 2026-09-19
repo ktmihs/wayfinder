@@ -20,7 +20,7 @@ type Props = {
 };
 
 const T = 16;
-const SPEED_CELLS = 5; // 초당 셀 (배속 1)
+const SPEED_CELLS = 2; // 초당 셀 = 8m/s (배속 1). 5는 너무 빨라 길을 못 따라간다
 
 // 픽셀 문자열 → 오프스크린 캔버스
 function bake(rows: string[]): HTMLCanvasElement {
