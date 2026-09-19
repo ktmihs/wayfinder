@@ -66,21 +66,30 @@ export default function ImageUpload({ initialUrl, disabled, onChange }: Props) {
       {removed && <input type="hidden" name="removeImage" value="1" />}
 
       {preview ? (
-        <div className="relative overflow-hidden rounded-xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="커버 미리보기" className="aspect-[4/3] w-full object-cover" />
-          <div className="absolute right-2 bottom-2 flex gap-2">
+        <div className="overflow-hidden rounded-xl ring-1 ring-neutral-200">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={disabled || busy}
+            className="block w-full"
+            aria-label="사진 바꾸기"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="커버 미리보기" className="aspect-[4/3] w-full object-cover" />
+          </button>
+          <div className="flex divide-x divide-neutral-200 bg-white">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow"
+              disabled={disabled || busy}
+              className="flex-1 py-2.5 text-sm font-semibold text-neutral-800 active:bg-neutral-50 disabled:opacity-50"
             >
-              바꾸기
+              {busy ? "처리 중…" : "📷 다른 사진으로 바꾸기"}
             </button>
             <button
               type="button"
               onClick={clear}
-              className="rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-rose-600 shadow"
+              className="px-5 py-2.5 text-sm font-semibold text-rose-600 active:bg-rose-50"
             >
               삭제
             </button>
