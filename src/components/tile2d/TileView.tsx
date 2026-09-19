@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Route, LatLng } from "@/lib/route/types";
-import { buildWorld, distanceToCellProgress, SHEET_COLS, type World } from "@/lib/tile2d/world";
+import { buildWorld, distanceToCellProgress, placeLandmarks, SHEET_COLS } from "@/lib/tile2d/world";
+import { findLandmarks, type Landmark } from "@/lib/landmarks";
 import { nearestPathIndex } from "@/lib/geo";
 import { formatDistance } from "@/lib/format";
 import { TURN_ICON } from "@/components/RouteSteps";
@@ -61,6 +62,21 @@ export default function TileView({ route, seed, me, sheetSrc = "/tiles/tiny-town
   const [progress, setProgress] = useState(0); // 셀 단위 진행도
   const progressRef = useRef(0);
   const [scale, setScale] = useState(3);
+  const [landmarks, setLandmarks] = useState<Landmark[]>([]);
+
+  // 경로 주변 실제 POI (편의점/카페/지하철…) → 약도 이름표
+  useEffect(() => {
+    let cancelled = false;
+    findLandmarks(route.path)
+      .then((l) => !cancelled && setLandmarks(l))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [route.path]);
+  const marks = useMemo(() => placeLandmarks(world, landmarks), [world, landmarks]);
+  const marksRef = useRef(marks);
+  marksRef.current = marks;
 
   // 타일시트 로드
   useEffect(() => {
@@ -164,9 +180,27 @@ export default function TileView({ route, seed, me, sheetSrc = "/tiles/tiny-town
       }
     }
 
+    // 이름표: 타일 위 중앙에 흰 판 + 진한 테두리
+    const plate = (text: string, cx: number, topY: number) => {
+      const fs = Math.round(10 * dpr);
+      ctx.font = `bold ${fs}px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
+      const pw = Math.ceil(ctx.measureText(text).width) + 8 * dpr;
+      const ph = fs + 6 * dpr;
+      const x = Math.round(cx - pw / 2), y = Math.round(topY - ph - 2 * dpr);
+      ctx.fillStyle = "#3d2a2a";
+      ctx.fillRect(x - dpr, y - dpr, pw + 2 * dpr, ph + 2 * dpr);
+      ctx.fillStyle = "#fff8e7";
+      ctx.fillRect(x, y, pw, ph);
+      ctx.fillStyle = "#3d2a2a";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText(text, x + pw / 2, y + ph / 2 + dpr * 0.5);
+    };
+
     // 소품 + 캐릭터를 y 순으로 (앞뒤 겹침 자연스럽게)
     type Item = { z: number; draw: () => void };
     const items: Item[] = [];
+    const labels: Array<() => void> = []; // 이름표는 맨 위에
     for (const p of world.props) {
       if (p.kind === "block") {
         const h = p.rows.length, w = p.rows[0].length;
@@ -178,10 +212,18 @@ export default function TileView({ route, seed, me, sheetSrc = "/tiles/tiny-town
       } else if (p.kind === "sign") {
         if (p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1) continue;
         items.push({ z: p.y + 1, draw: () => tile(83, p.x, p.y) });
+        const step = route.steps[p.step];
+        const text = step ? (p.step === 0 ? "🚩 출발" : `${TURN_ICON[step.turn]} ${step.description.slice(0, 14)}`) : "";
+        if (text) labels.push(() => plate(text, p.x * TS - camX + TS / 2, p.y * TS - camY + 2 * S));
       } else if (p.kind === "heart") {
         const bob = Math.sin(performance.now() / 300) * 2;
         items.push({ z: 9999, draw: () => ctx.drawImage(chars.heart, Math.round(p.x * TS - camX), Math.round(p.y * TS - camY + bob * S), TS, TS) });
       }
+    }
+    for (const m of marksRef.current) {
+      if (m.x < x0 || m.x > x1 || m.y < y0 || m.y > y1) continue;
+      items.push({ z: m.y + 1, draw: () => tile(83, m.x, m.y) });
+      labels.push(() => plate(m.label, m.x * TS - camX + TS / 2, m.y * TS - camY + 2 * S));
     }
     items.push({
       z: ch.y + 1,
@@ -191,6 +233,7 @@ export default function TileView({ route, seed, me, sheetSrc = "/tiles/tiny-town
       },
     });
     items.sort((a, b) => a.z - b.z).forEach((i) => i.draw());
+    labels.forEach((l) => l());
   }
 
   // 현재 진행도 기준 다음 안내

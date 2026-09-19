@@ -1,4 +1,6 @@
 import type { Route } from "@/lib/route/types";
+import type { Landmark } from "@/lib/landmarks";
+import { LANDMARK_EMOJI, shortName } from "@/lib/landmarks";
 import { buildTrack, hashString, mulberry32, type Track } from "./geometry";
 
 // Kenney Tiny Town (public/tiles/tiny-town.png, 12x11 타일, 16px) 인덱스
@@ -35,6 +37,8 @@ export type World = {
   ground: (x: number, y: number) => number;
   props: Prop[];
   destHouse: Cell | null;
+  /** 소품이 차지한 셀 (랜드마크 배치 시 회피용) */
+  occupied: Set<string>;
 };
 
 const key = (x: number, y: number) => `${x},${y}`;
@@ -179,7 +183,60 @@ export function buildWorld(route: Route, seed: string): World {
     return h < 5 ? TILE.grassFlower : h < 16 ? TILE.grassTuft : TILE.grass;
   };
 
-  return { track, cells, pathToCell, pathSet, bounds, ground, props, destHouse };
+  return { track, cells, pathToCell, pathSet, bounds, ground, props, destHouse, occupied };
+}
+
+export type LandmarkMark = { x: number; y: number; label: string; kind: Landmark["kind"] };
+
+/**
+ * 실제 POI 를 경로 바로 옆 칸에 이름표로 놓는다. (약도의 "GS25 끼고 우회전" 역할)
+ * 경로에서 어느 쪽에 있는지(좌/우)를 유지해서 방향감이 맞게.
+ */
+export function placeLandmarks(world: World, landmarks: Landmark[]): LandmarkMark[] {
+  const used = new Set<string>(
+    world.props.filter((p) => p.kind === "sign").map((p) => key(p.x, p.y)),
+  );
+  const out: LandmarkMark[] = [];
+  const { pts } = world.track;
+
+  for (const lm of landmarks) {
+    const p = world.track.project(lm);
+    // 가장 가까운 경로 점
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const d = Math.hypot(pts[i].x - p.x, pts[i].y - p.y);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    const ci = world.pathToCell[bi];
+    const c = world.cells[ci];
+    const n = world.cells[Math.min(ci + 1, world.cells.length - 1)];
+    const pr = world.cells[Math.max(ci - 1, 0)];
+    const dx = Math.sign(n.x - pr.x), dy = Math.sign(n.y - pr.y);
+    // 진행 방향 기준 POI 가 왼쪽인지 오른쪽인지 (외적 부호)
+    const vx = p.x - pts[bi].x, vy = p.y - pts[bi].y;
+    const cross = dx * vy - dy * vx;
+    const side = cross >= 0 ? 1 : -1;
+    const nx = -dy * side, ny = dx * side; // 수직 방향 (둘 다 0이면 아래쪽으로)
+    const cand: Cell[] = [];
+    for (const off of [1, 2]) for (const along of [0, 1, -1, 2, -2]) {
+      cand.push({ x: c.x + (nx || 0) * off + dx * along, y: c.y + (ny || (nx ? 0 : 1)) * off + dy * along });
+    }
+    const spot = cand.find((q) => {
+      const k = key(q.x, q.y);
+      return !world.pathSet.has(k) && !used.has(k) && !world.occupied.has(k + "!") && !isBlockCell(world, q);
+    });
+    if (!spot) continue;
+    used.add(key(spot.x, spot.y));
+    out.push({ x: spot.x, y: spot.y, label: `${LANDMARK_EMOJI[lm.kind]} ${shortName(lm.name)}`, kind: lm.kind });
+  }
+  return out;
+}
+
+/** 집/숲 같은 다중 타일 소품 위인지 */
+function isBlockCell(world: World, c: Cell) {
+  return world.props.some(
+    (p) => p.kind === "block" && c.x >= p.x && c.x < p.x + p.rows[0].length && c.y >= p.y && c.y < p.y + p.rows.length,
+  );
 }
 
 /** 경로 누적 거리(m) → 셀 진행도 (셀 인덱스, 소수) */
