@@ -58,7 +58,7 @@ export type RouteLeg = {
 };
 
 export type Route = {
-  provider: "tmap" | "osrm";
+  provider: "tmap" | "osrm" | "odsay";
   travel: TravelMode;
   /** 총 거리(m) */
   distance: number;

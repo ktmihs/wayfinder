@@ -1,5 +1,6 @@
 import { tmapPedestrian } from "./tmap";
 import { tmapTransit } from "./tmapTransit";
+import { odsayTransit } from "./odsay";
 import { osrmFoot } from "./osrm";
 import type { LatLng, Route, TravelMode } from "./types";
 import { getCachedRoute, routeCacheKey, setCachedRoute } from "./cache";
@@ -21,31 +22,40 @@ export async function findWalkingRoute(from: LatLng, to: LatLng): Promise<Route>
   return osrmFoot(from, to);
 }
 
-/** 두 좌표 사이 직선 거리(m). 너무 먼 요청을 거르는 데 사용 */
-export function haversine(a: LatLng, b: LatLng) {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
+export { haversine } from "./geo";
 
-/** 대중교통 경로. Tmap 전용 (폴백 없음) */
+/**
+ * 대중교통 경로. Tmap → (키/한도 문제면) ODsay 순으로 시도.
+ * 둘 다 안 되면 TransitUnavailable 로 손님에게 도보 폴백을 안내한다.
+ */
 export async function findTransitRoute(from: LatLng, to: LatLng): Promise<Route> {
-  if (!process.env.TMAP_APP_KEY) throw new TransitUnavailable("대중교통 안내는 아직 준비 중이에요. 도보로 안내해 드릴게요.");
-  try {
-    return await tmapTransit(from, to);
-  } catch (e) {
-    const msg = (e as Error).message;
-    if (/403|INVALID_API_KEY/.test(msg)) throw new TransitUnavailable("대중교통 안내는 아직 준비 중이에요. 도보로 안내해 드릴게요.");
-    if (/429|QUOTA_EXCEEDED|Limit Exceeded/.test(msg)) {
-      throw new TransitUnavailable("오늘 대중교통 안내 한도를 다 썼어요. 도보로 보여드릴게요.", "QUOTA");
+  const hasTmap = !!process.env.TMAP_APP_KEY;
+  const hasOdsay = !!process.env.ODSAY_API_KEY;
+  if (!hasTmap && !hasOdsay) throw new TransitUnavailable("대중교통 안내는 아직 준비 중이에요. 도보로 안내해 드릴게요.");
+
+  let tmapReason: "KEY" | "QUOTA" | null = null;
+  if (hasTmap) {
+    try {
+      return await tmapTransit(from, to);
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (/403|INVALID_API_KEY/.test(msg)) tmapReason = "KEY";
+      else if (/429|QUOTA_EXCEEDED|Limit Exceeded/.test(msg)) tmapReason = "QUOTA";
+      else if (!hasOdsay) throw e; // 경로 없음 등은 그대로 (ODsay 있으면 한 번 더 시도)
+      console.warn("[route] Tmap 대중교통 실패, ODsay 시도:", msg);
     }
-    throw e;
   }
+  if (hasOdsay) {
+    try {
+      return await odsayTransit(from, to);
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (/한도|limit|quota/i.test(msg)) throw new TransitUnavailable("오늘 대중교통 안내 한도를 다 썼어요. 도보로 보여드릴게요.", "QUOTA");
+      throw e;
+    }
+  }
+  if (tmapReason === "QUOTA") throw new TransitUnavailable("오늘 대중교통 안내 한도를 다 썼어요. 도보로 보여드릴게요.", "QUOTA");
+  throw new TransitUnavailable("대중교통 안내는 아직 준비 중이에요. 도보로 안내해 드릴게요.");
 }
 
 export class TransitUnavailable extends Error {

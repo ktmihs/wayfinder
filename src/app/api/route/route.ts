@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { findRoute, haversine, TransitUnavailable } from "@/lib/route";
+import { findRoute, TransitUnavailable } from "@/lib/route";
+import { haversine } from "@/lib/route/geo";
 
 const MAX_WALK_M = 30_000; // 30km 넘으면 도보 안내 의미가 없다
 const MAX_TRANSIT_M = 200_000;
