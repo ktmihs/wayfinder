@@ -7,6 +7,8 @@ type Props = {
   placeholder?: string;
   /** 초기 표시 텍스트 (수정 화면에서 기존 주소 표시용) */
   initialText?: string;
+  /** 바깥에서 선택이 바뀌었을 때 입력창 텍스트를 맞춰줄 값 (예: "현재 위치") */
+  displayText?: string | null;
   onSelect: (result: SearchResult) => void;
   autoFocus?: boolean;
 };
@@ -15,7 +17,7 @@ type Props = {
  * 주소/장소명을 입력하면 카카오 검색 결과를 아래에 띄우고,
  * 하나를 고르면 onSelect로 좌표를 넘긴다.
  */
-export default function AddressSearch({ placeholder, initialText, onSelect, autoFocus }: Props) {
+export default function AddressSearch({ placeholder, initialText, displayText, onSelect, autoFocus }: Props) {
   const [text, setText] = useState(initialText ?? "");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -23,6 +25,15 @@ export default function AddressSearch({ placeholder, initialText, onSelect, auto
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastQuery = useRef("");
+
+  // 바깥에서 정한 텍스트(현재 위치 등)로 입력창을 맞추고, 그 텍스트로는 검색하지 않는다
+  useEffect(() => {
+    if (displayText == null) return;
+    lastQuery.current = displayText;
+    setText(displayText);
+    setResults([]);
+    setOpen(false);
+  }, [displayText]);
 
   // 입력이 멈추고 300ms 뒤에 검색 (디바운스)
   useEffect(() => {

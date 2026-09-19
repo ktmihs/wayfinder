@@ -80,7 +80,12 @@ export default function GuestView({ place }: { place: PublicPlace }) {
       <section className="px-5 pb-4">
         <label className="block text-sm font-semibold">어디서 출발하세요?</label>
         <div className="mt-2">
-          <AddressSearch onSelect={pickAddress} placeholder="출발지 주소 또는 역 이름" autoFocus={!origin} />
+          <AddressSearch
+            onSelect={pickAddress}
+            displayText={origin?.label}
+            placeholder="출발지 주소 또는 역 이름"
+            autoFocus={!origin}
+          />
         </div>
         <button
           type="button"
