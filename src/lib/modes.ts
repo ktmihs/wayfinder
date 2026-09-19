@@ -9,6 +9,13 @@ export const MODES = [
     ready: true,
   },
   {
+    id: "character",
+    label: "캐릭터 안내",
+    description: "실제 지도 위를 픽셀 캐릭터가 경로 따라 걸어가요.",
+    emoji: "🚶",
+    ready: true,
+  },
+  {
     id: "tile2d",
     label: "2D 타일 맵",
     description: "픽셀 타일 지도 위를 캐릭터가 걸어가며 길을 알려줘요.",

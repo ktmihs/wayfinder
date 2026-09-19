@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { loadKakao } from "@/lib/kakao";
 import type { LatLng } from "@/lib/route/types";
+import { charSpriteUrl, type Dir } from "@/lib/charSprite";
 
 export type MapPoint = { lat: number; lng: number; label?: string };
 
@@ -17,6 +18,10 @@ type Props = {
   me?: (LatLng & { accuracy: number; heading: number | null }) | null;
   /** true면 내 위치가 바뀔 때마다 지도를 따라 움직인다 */
   follow?: boolean;
+  /** 픽셀 캐릭터 (캐릭터 안내 모드). 있으면 내 위치 파란 점 대신 캐릭터를 그린다 */
+  character?: (LatLng & { dir: Dir; frame: number }) | null;
+  /** 캐릭터 위치에 지도를 맞출지 */
+  followCharacter?: boolean;
   className?: string;
 };
 
@@ -24,11 +29,12 @@ type Props = {
  * 카카오맵을 띄우고 출발/도착 마커를 그린다.
  * 경로(polyline)는 2단계에서 이 컴포넌트 위에 얹는다.
  */
-export default function KakaoMap({ destination, origin, path, me, follow, className }: Props) {
+export default function KakaoMap({ destination, origin, path, me, follow, character, followCharacter, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<Array<{ setMap(map: kakao.maps.Map | null): void }>>([]);
   const meRef = useRef<{ dot: kakao.maps.CustomOverlay; circle: kakao.maps.Circle } | null>(null);
+  const charRef = useRef<{ overlay: kakao.maps.CustomOverlay; img: HTMLImageElement; key: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // 최초 1회: 지도 생성
@@ -124,6 +130,7 @@ export default function KakaoMap({ destination, origin, path, me, follow, classN
         return;
       }
       const pos = new k.maps.LatLng(me.lat, me.lng);
+      const hideDot = !!character;
       if (!meRef.current) {
         const dot = new k.maps.CustomOverlay({
           position: pos,
@@ -138,17 +145,51 @@ export default function KakaoMap({ destination, origin, path, me, follow, classN
           strokeWeight: 1, strokeColor: "#0ea5e9", strokeOpacity: 0.5,
           fillColor: "#38bdf8", fillOpacity: 0.15,
         });
-        dot.setMap(map);
+        dot.setMap(hideDot ? null : map);
         circle.setMap(map);
         meRef.current = { dot, circle };
       } else {
         meRef.current.dot.setPosition(pos);
+        meRef.current.dot.setMap(hideDot ? null : map);
         meRef.current.circle.setPosition(pos);
         meRef.current.circle.setRadius(me.accuracy);
       }
       if (follow) map.panTo(pos);
     });
-  }, [me, follow]);
+  }, [me, follow, character]);
+
+  // 픽셀 캐릭터 오버레이
+  useEffect(() => {
+    loadKakao().then((k) => {
+      const map = mapRef.current;
+      if (!map) return;
+      if (!character) {
+        charRef.current?.overlay.setMap(null);
+        charRef.current = null;
+        return;
+      }
+      const pos = new k.maps.LatLng(character.lat, character.lng);
+      const key = `${character.dir}:${character.frame % 2}`;
+      if (!charRef.current) {
+        const img = document.createElement("img");
+        img.width = 48;
+        img.height = 48;
+        img.style.imageRendering = "pixelated";
+        img.style.filter = "drop-shadow(0 3px 2px rgba(0,0,0,.35))";
+        img.src = charSpriteUrl(character.dir, character.frame);
+        const overlay = new k.maps.CustomOverlay({ position: pos, content: img, yAnchor: 0.9, zIndex: 20 });
+        overlay.setMap(map);
+        charRef.current = { overlay, img, key };
+      } else {
+        charRef.current.overlay.setPosition(pos);
+        if (charRef.current.key !== key) {
+          charRef.current.img.src = charSpriteUrl(character.dir, character.frame);
+          charRef.current.key = key;
+        }
+      }
+      if (followCharacter) map.setCenter(pos);
+    });
+  }, [character, followCharacter]);
 
   // 모바일에서 화면 회전/주소창 변화로 컨테이너 크기가 바뀌면 relayout
   useEffect(() => {

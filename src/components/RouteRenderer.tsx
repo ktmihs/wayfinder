@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import KakaoMap from "@/components/KakaoMap";
 import TileView from "@/components/tile2d/TileView";
+import PlaybackBar from "@/components/PlaybackBar";
+import { useWalkPlayback, type CharacterPose } from "@/lib/useWalkPlayback";
+import { dirFromBearing } from "@/lib/charSprite";
+import { bearing } from "@/lib/walk";
 import RouteSteps, { TURN_ICON } from "@/components/RouteSteps";
 import { useRoute } from "@/lib/route/useRoute";
 import { distanceM, nearestPathIndex, remainingDistance, useLiveLocation } from "@/lib/geo";
@@ -41,6 +45,7 @@ export default function RouteRenderer({ modes, place, origin, onReroute }: Props
   const { status, route, error } = useRoute(origin, destination);
 
   const useTile = mode === "tile2d" && !!route;
+  const useCharacter = mode === "character" && !!route;
 
   // 실시간 안내
   const [navigating, setNavigating] = useState(false);
@@ -57,6 +62,22 @@ export default function RouteRenderer({ modes, place, origin, onReroute }: Props
     setAskReroute(false);
     offSince.current = null;
   }
+
+  // 캐릭터 안내: 재생 중이면 경로를 따라 걷고, 실시간 안내 중이면 내 위치에 선다
+  const playback = useWalkPlayback(route, useCharacter && !navigating);
+  const lastMe = useRef<{ lat: number; lng: number; dir: CharacterPose["dir"]; frame: number } | null>(null);
+  const liveCharacter: CharacterPose | null = useMemo(() => {
+    if (!useCharacter || !navigating || !me) return null;
+    const prev = lastMe.current;
+    const moved = prev ? distanceM(prev, me) : 0;
+    const dir =
+      me.heading != null ? dirFromBearing(me.heading) : prev && moved > 2 ? dirFromBearing(bearing(prev, me)) : (prev?.dir ?? "down");
+    const frame = prev && moved > 1 ? (prev.frame + 1) % 2 : (prev?.frame ?? 0);
+    const next = { lat: me.lat, lng: me.lng, dir, frame };
+    lastMe.current = next;
+    return next;
+  }, [useCharacter, navigating, me]);
+  const character = useCharacter ? (navigating ? liveCharacter : playback.pose) : null;
 
   // 내 위치 → 경로상 위치 → 현재 구간 / 남은 거리 / 도착 여부
   const nav = useMemo(() => {
@@ -123,8 +144,41 @@ export default function RouteRenderer({ modes, place, origin, onReroute }: Props
             path={route?.path}
             me={me}
             follow={navigating && follow}
+            character={character}
+            followCharacter={useCharacter && !navigating && playback.playing}
             className={origin ? "h-[45vh]" : "h-[55vh]"}
           />
+        )}
+
+        {/* 캐릭터 재생 중 다음 안내 캡션 */}
+        {useCharacter && !navigating && route && (() => {
+          let idx = 0;
+          route.steps.forEach((st, i) => { if (playback.cumAt(st.pathIndex) <= playback.dist + 0.5) idx = i; });
+          const nx = route.steps[Math.min(idx + 1, route.steps.length - 1)];
+          const left = Math.max(0, playback.cumAt(nx.pathIndex) - playback.dist);
+          return (
+            <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-center">
+              <div className="rounded-xl border-2 border-[#3d2a2a] bg-[#fff8e7] px-3 py-1.5 text-sm font-semibold text-[#3d2a2a] shadow-[3px_3px_0_#3d2a2a]">
+                {playback.arrived ? "🏠 도착!" : `${TURN_ICON[nx.turn]} ${nx.description}`}
+                {!playback.arrived && <span className="ml-2 font-normal opacity-70">{formatDistance(left)}</span>}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 캐릭터 재생 컨트롤 (실시간 안내 중엔 숨김) */}
+        {useCharacter && !navigating && (
+          <div className="absolute inset-x-3 bottom-3">
+            <PlaybackBar
+              playing={playback.playing}
+              dist={playback.dist}
+              total={playback.total}
+              speed={playback.speed}
+              onToggle={playback.toggle}
+              onSeek={playback.seek}
+              onSpeed={playback.cycleSpeed}
+            />
+          </div>
         )}
 
         {status === "loading" && (
