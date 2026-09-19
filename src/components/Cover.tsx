@@ -1,4 +1,7 @@
-import { getTheme } from "@/lib/themes";
+"use client";
+
+import { useState } from "react";
+import { resolveTheme } from "@/lib/themes";
 import { formatEventAt } from "@/lib/format";
 
 export type CoverData = {
@@ -8,6 +11,7 @@ export type CoverData = {
   greeting?: string | null;
   imageUrl?: string | null;
   theme: string;
+  accent?: string | null;
   placeName?: string | null;
   address: string;
 };
@@ -21,53 +25,42 @@ type Props = {
 
 /** 손님이 링크를 열면 가장 먼저 보는 초대 커버 */
 export default function Cover({ data, onStart, preview }: Props) {
-  const t = getTheme(data.theme);
+  const t = resolveTheme(data.theme, data.accent);
   const when = formatEventAt(data.eventAt);
-  const photoBg = !!t.photoBg && !!data.imageUrl;
+  const [lightbox, setLightbox] = useState(false);
 
   return (
     <div
-      className={`relative flex flex-col overflow-hidden ${preview ? "min-h-[420px]" : "min-h-dvh"}`}
-      style={{ background: `linear-gradient(160deg, ${t.from}, ${t.to})`, color: t.text }}
+      className={`flex flex-col ${preview ? "min-h-[420px]" : "min-h-dvh"}`}
+      style={{ background: t.bg, color: t.text }}
     >
-      {/* 사진 배경 테마: 사진을 전체에 깔고 반투명 흰 막 */}
-      {photoBg && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={data.imageUrl!} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-white/70" />
-        </>
-      )}
-
-      {photoBg ? (
-        <div className={preview ? "h-16" : "h-[22vh]"} />
-      ) : data.imageUrl ? (
-        <div className={`relative w-full overflow-hidden ${preview ? "aspect-[4/3]" : "aspect-[4/3] max-h-[48vh]"}`}>
+      {data.imageUrl ? (
+        <button
+          type="button"
+          onClick={() => !preview && setLightbox(true)}
+          className="relative block aspect-square w-full overflow-hidden"
+          aria-label="사진 크게 보기"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={data.imageUrl} alt="" decoding="async" className="h-full w-full object-cover" />
-          {t.overlay && (
-            <div
-              className="absolute inset-x-0 bottom-0 h-24"
-              style={{ background: `linear-gradient(to bottom, transparent, ${t.from})` }}
-            />
-          )}
-        </div>
+        </button>
       ) : (
         <div className={`flex items-center justify-center ${preview ? "h-28" : "h-[30vh]"}`}>
           <span className={preview ? "text-5xl" : "text-7xl"} aria-hidden>🏠</span>
         </div>
       )}
 
-      <div className="relative flex flex-1 flex-col px-6 pb-8">
+      {/* 설명 영역 — 사진과 글 사이, 글 좌우에 넉넉한 여백 */}
+      <div className="flex flex-1 flex-col px-7 pt-7 pb-8">
         {data.hostName && (
-          <p className="text-sm font-medium" style={{ opacity: t.overlay ? 0.9 : 0.6 }}>{data.hostName}님의 초대</p>
+          <p className="text-sm font-medium" style={{ color: t.muted }}>{data.hostName}님의 초대</p>
         )}
         <h1 className={`mt-1 font-bold leading-tight ${preview ? "text-2xl" : "text-3xl"}`}>{data.name}</h1>
-        {when && <p className="mt-2 text-base font-medium opacity-95">{when}</p>}
-        <p className="mt-1 text-sm opacity-80">{data.placeName ?? data.address}</p>
+        {when && <p className="mt-3 text-base font-medium">{when}</p>}
+        <p className="mt-1 text-sm" style={{ color: t.muted }}>{data.placeName ?? data.address}</p>
 
         {data.greeting && (
-          <p className="mt-5 text-[15px] leading-relaxed whitespace-pre-line opacity-95">{data.greeting}</p>
+          <p className="mt-6 text-[15px] leading-relaxed whitespace-pre-line">{data.greeting}</p>
         )}
 
         <div className="flex-1" />
@@ -76,12 +69,34 @@ export default function Cover({ data, onStart, preview }: Props) {
           type="button"
           onClick={onStart}
           disabled={preview}
-          className={`mt-8 w-full rounded-xl py-3.5 text-base font-semibold transition active:scale-[0.99] ${t.overlay ? "shadow-lg" : "shadow-md"}`}
-          style={{ background: t.text, color: t.overlay ? t.to : "#ffffff" }}
+          className="mt-8 w-full rounded-xl py-3.5 text-base font-semibold shadow-md transition active:scale-[0.99]"
+          style={{ background: t.buttonBg, color: t.buttonText }}
         >
           오시는 길 보기 →
         </button>
       </div>
+
+      {/* 사진 전체 보기 */}
+      {lightbox && data.imageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-3"
+          onClick={() => setLightbox(false)}
+          role="dialog"
+          aria-label="사진"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={data.imageUrl} alt="" className="max-h-full max-w-full object-contain" />
+          <button
+            type="button"
+            onClick={() => setLightbox(false)}
+            className="absolute top-4 right-4 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold text-white"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
+            aria-label="닫기"
+          >
+            닫기 ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

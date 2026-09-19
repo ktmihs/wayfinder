@@ -28,7 +28,8 @@ model Place {
   eventAt     DateTime?         // 행사 일시
   greeting    String?           // 인사말
   imageUrl    String?           // 대표 이미지 (Supabase Storage 공개 URL)
-  theme       String   @default("rose") // 커버 색상 테마 키
+  theme       String   @default("white") // 커버 테마: white | black | auto(사진 색)
+  accent      String?           // 사진에서 추출한 대표색 (#rrggbb). theme=auto 일 때 사용
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

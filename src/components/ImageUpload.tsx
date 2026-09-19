@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { resizeImage } from "@/lib/image";
+import { extractAccent } from "@/lib/accent";
 
 type Props = {
   /** 기존 이미지 URL (수정 화면) */
@@ -9,6 +10,8 @@ type Props = {
   /** 저장소 미설정 시 비활성화 */
   disabled?: boolean;
   onChange?: (previewUrl: string | null) => void;
+  /** 사진 대표색 추출 결과 (사진 삭제 시 null) */
+  onAccent?: (hex: string | null) => void;
 };
 
 /**
@@ -16,7 +19,7 @@ type Props = {
  * <input name="image">의 files 를 교체한다 → 폼 제출 시 함께 올라간다.
  * 기존 이미지를 지우면 <input name="removeImage" value="1">이 붙는다.
  */
-export default function ImageUpload({ initialUrl, disabled, onChange }: Props) {
+export default function ImageUpload({ initialUrl, disabled, onChange, onAccent }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(initialUrl ?? null);
   const [removed, setRemoved] = useState(false);
@@ -42,6 +45,7 @@ export default function ImageUpload({ initialUrl, disabled, onChange }: Props) {
       setPreview(url);
       setRemoved(false);
       onChange?.(url);
+      extractAccent(toPreview).then((hex) => onAccent?.(hex));
     } catch (e) {
       setError((e as Error).message);
       inputRef.current.value = "";
@@ -55,6 +59,7 @@ export default function ImageUpload({ initialUrl, disabled, onChange }: Props) {
     setPreview(null);
     setRemoved(Boolean(initialUrl));
     onChange?.(null);
+    onAccent?.(null);
   }
 
   return (

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getPlaceById } from "@/lib/places";
-import { getTheme } from "@/lib/themes";
+import { resolveTheme } from "@/lib/themes";
 import { formatEventAt } from "@/lib/format";
 
 export const runtime = "nodejs";
@@ -12,9 +12,8 @@ export const contentType = "image/png";
 export default async function OgImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const place = await getPlaceById(id);
-  const t = getTheme(place?.theme ?? "rose");
+  const t = resolveTheme(place?.theme, place?.accent);
   const when = formatEventAt(place?.eventAt);
-  const photoBg = !!t.photoBg && !!place?.imageUrl;
 
   return new ImageResponse(
     (
@@ -24,25 +23,12 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
           height: "100%",
           display: "flex",
           position: "relative",
-          background: `linear-gradient(135deg, ${t.from}, ${t.to})`,
+          background: t.bg,
           color: t.text,
           fontFamily: "sans-serif",
         }}
       >
-        {photoBg && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={place!.imageUrl!}
-            alt=""
-            width={1200}
-            height={630}
-            style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, objectFit: "cover" }}
-          />
-        )}
-        {photoBg && (
-          <div style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, background: "rgba(255,255,255,0.74)", display: "flex" }} />
-        )}
-        {!photoBg && place?.imageUrl && (
+        {place?.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={place.imageUrl}
@@ -62,14 +48,14 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
             position: "relative",
           }}
         >
-          <div style={{ fontSize: 28, opacity: 0.9, display: "flex" }}>
+          <div style={{ fontSize: 28, color: t.muted, display: "flex" }}>
             {place?.hostName ? `${place.hostName}님의 초대` : "오시는 길"}
           </div>
           <div style={{ fontSize: 72, fontWeight: 700, lineHeight: 1.15, marginTop: 12, display: "flex" }}>
             {place?.name ?? "오시는 길"}
           </div>
           {when && <div style={{ fontSize: 34, marginTop: 24, display: "flex" }}>{when}</div>}
-          <div style={{ fontSize: 26, opacity: 0.85, marginTop: 10, display: "flex" }}>
+          <div style={{ fontSize: 26, color: t.muted, marginTop: 10, display: "flex" }}>
             {place?.placeName ?? place?.address ?? ""}
           </div>
           <div
@@ -77,8 +63,8 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
               marginTop: 48,
               display: "flex",
               alignSelf: "flex-start",
-              background: t.text,
-              color: t.overlay ? t.to : "#ffffff",
+              background: t.buttonBg,
+              color: t.buttonText,
               borderRadius: 999,
               padding: "16px 32px",
               fontSize: 26,

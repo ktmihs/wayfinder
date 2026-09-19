@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { customAlphabet } from "nanoid";
 import { prisma } from "@/lib/db";
 import { isModeId, serializeModes, type ModeId } from "@/lib/modes";
-import { isThemeId } from "@/lib/themes";
+import { isThemeId, isValidHex } from "@/lib/themes";
 import { deleteCoverByUrl, uploadCover } from "@/lib/supabase";
 
 // 공유 ID는 URL에 들어가므로 헷갈리는 글자(0/O, 1/l)를 뺀 짧은 ID를 쓴다.
@@ -43,7 +43,9 @@ function parsePlaceForm(formData: FormData) {
   // 온보딩(커버)
   const hostName = str(formData, "hostName") || null;
   const greeting = str(formData, "greeting") || null;
-  const theme = str(formData, "theme") || "rose";
+  const theme = str(formData, "theme") || "white";
+  const accentRaw = str(formData, "accent").toLowerCase();
+  const accent = isValidHex(accentRaw) ? accentRaw : null;
   const eventAtRaw = str(formData, "eventAt");
   const eventAt = eventAtRaw ? new Date(eventAtRaw) : null;
 
@@ -66,7 +68,7 @@ function parsePlaceForm(formData: FormData) {
   }
 
   return {
-    data: { name, address, roadAddress, placeName, detail, lat, lng, modes: serializeModes(modes), hostName, greeting, theme, eventAt },
+    data: { name, address, roadAddress, placeName, detail, lat, lng, modes: serializeModes(modes), hostName, greeting, theme, accent, eventAt },
     imageFile,
     removeImage,
   } as const;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import AddressSearch from "@/components/AddressSearch";
 import KakaoMap from "@/components/KakaoMap";
 import ModePicker from "@/components/ModePicker";
@@ -9,7 +9,8 @@ import ImageUpload from "@/components/ImageUpload";
 import Cover from "@/components/Cover";
 import type { FormState } from "@/app/actions";
 import { parseModes, type ModeId } from "@/lib/modes";
-import type { ThemeId } from "@/lib/themes";
+import { normalizeThemeId, type ThemeId } from "@/lib/themes";
+import { extractAccent } from "@/lib/accent";
 import type { SearchResult } from "@/lib/kakao";
 import { toDatetimeLocal } from "@/lib/format";
 
@@ -27,6 +28,7 @@ type Initial = {
   greeting: string | null;
   imageUrl: string | null;
   theme: string;
+  accent: string | null;
 };
 
 type Props = {
@@ -60,8 +62,18 @@ export default function PlaceForm({ action, initial, submitLabel, storageReady }
   const [hostName, setHostName] = useState(initial?.hostName ?? "");
   const [eventAtLocal, setEventAtLocal] = useState(toDatetimeLocal(initial?.eventAt));
   const [greeting, setGreeting] = useState(initial?.greeting ?? "");
-  const [theme, setTheme] = useState<ThemeId>((initial?.theme as ThemeId) ?? "rose");
+  const [theme, setTheme] = useState<ThemeId>(normalizeThemeId(initial?.theme));
   const [imagePreview, setImagePreview] = useState<string | null>(initial?.imageUrl ?? null);
+  const [accent, setAccent] = useState<string | null>(initial?.accent ?? null);
+
+  // 예전에 올린 사진이라 대표색이 없으면 지금 뽑아둔다
+  useEffect(() => {
+    if (initial?.imageUrl && !initial.accent) extractAccent(initial.imageUrl).then((hex) => hex && setAccent(hex));
+  }, [initial?.imageUrl, initial?.accent]);
+  // 사진이 없어지면 '사진 색' 테마는 화이트로
+  useEffect(() => {
+    if (theme === "auto" && !accent) setTheme("white");
+  }, [theme, accent]);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -124,7 +136,15 @@ export default function PlaceForm({ action, initial, submitLabel, storageReady }
 
         <div className="space-y-5">
           <Field label="사진">
-            <ImageUpload initialUrl={initial?.imageUrl} disabled={!storageReady} onChange={setImagePreview} />
+            <ImageUpload
+              initialUrl={initial?.imageUrl}
+              disabled={!storageReady}
+              onChange={setImagePreview}
+              onAccent={(hex) => {
+                setAccent(hex);
+                if (hex) setTheme("auto"); // 사진을 올리면 사진 색을 기본으로 제안
+              }}
+            />
           </Field>
 
           <Field label="초대하는 사람">
@@ -159,9 +179,10 @@ export default function PlaceForm({ action, initial, submitLabel, storageReady }
             />
           </Field>
 
-          <Field label="색상 테마">
-            <ThemePicker value={theme} onChange={setTheme} />
+          <Field label="색상 테마" hint="사진 색은 올린 사진에서 자동으로 뽑아요.">
+            <ThemePicker value={theme} accent={accent} onChange={setTheme} />
             <input type="hidden" name="theme" value={theme} />
+            <input type="hidden" name="accent" value={accent ?? ""} />
           </Field>
 
           <Field label="미리보기">
@@ -175,6 +196,7 @@ export default function PlaceForm({ action, initial, submitLabel, storageReady }
                   greeting,
                   imageUrl: imagePreview,
                   theme,
+                  accent,
                   placeName: dest?.placeName,
                   address: dest?.roadAddress ?? dest?.address ?? "도착지 주소",
                 }}
