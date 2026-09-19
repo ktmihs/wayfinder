@@ -93,7 +93,7 @@ export function useWalkPlayback(route: Route | null, enabled: boolean) {
       setPlaying(false);
     },
     cycleSpeed() {
-      setSpeed((s) => (s === 1 ? 2 : s === 2 ? 4 : 1));
+      setSpeed((s) => (s === 0.5 ? 1 : s === 1 ? 2 : s === 2 ? 4 : 0.5));
     },
   };
 }

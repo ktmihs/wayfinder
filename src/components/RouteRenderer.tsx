@@ -173,6 +173,7 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
           <div className="absolute inset-x-3 bottom-3">
             <PlaybackBar
               playing={playback.playing}
+              arrived={playback.arrived}
               dist={playback.dist}
               total={playback.total}
               speed={playback.speed}
