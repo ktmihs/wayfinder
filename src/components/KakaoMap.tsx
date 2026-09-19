@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { loadKakao } from "@/lib/kakao";
+import type { LatLng } from "@/lib/route/types";
 
 export type MapPoint = { lat: number; lng: number; label?: string };
 
@@ -10,6 +11,8 @@ type Props = {
   destination: MapPoint;
   /** 출발지 (선택되면 표시 + 두 지점이 모두 보이게 화면 맞춤) */
   origin?: MapPoint | null;
+  /** 경로 좌표. 있으면 폴리라인으로 그리고 경로 전체가 보이게 맞춤 */
+  path?: LatLng[] | null;
   className?: string;
 };
 
@@ -17,7 +20,7 @@ type Props = {
  * 카카오맵을 띄우고 출발/도착 마커를 그린다.
  * 경로(polyline)는 2단계에서 이 컴포넌트 위에 얹는다.
  */
-export default function KakaoMap({ destination, origin, className }: Props) {
+export default function KakaoMap({ destination, origin, path, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<Array<{ setMap(map: kakao.maps.Map | null): void }>>([]);
@@ -77,6 +80,21 @@ export default function KakaoMap({ destination, origin, className }: Props) {
         overlaysRef.current.push(label);
       }
 
+      if (path && path.length > 1) {
+        const latlngs = path.map((p) => new k.maps.LatLng(p.lat, p.lng));
+        // 흰 테두리 + 파란 선, 두 겹으로 그려서 지도 위에서 잘 보이게
+        const outline = new k.maps.Polyline({
+          path: latlngs, strokeWeight: 9, strokeColor: "#ffffff", strokeOpacity: 0.9, strokeStyle: "solid",
+        });
+        const line = new k.maps.Polyline({
+          path: latlngs, strokeWeight: 5, strokeColor: "#2563eb", strokeOpacity: 1, strokeStyle: "solid",
+        });
+        outline.setMap(map);
+        line.setMap(map);
+        overlaysRef.current.push(outline, line);
+        latlngs.forEach((ll) => bounds.extend(ll));
+      }
+
       if (points.length > 1) {
         map.setBounds(bounds, 60, 60, 60, 60);
       } else {
@@ -84,7 +102,7 @@ export default function KakaoMap({ destination, origin, className }: Props) {
         map.setLevel(4);
       }
     });
-  }, [destination, origin]);
+  }, [destination, origin, path]);
 
   // 모바일에서 화면 회전/주소창 변화로 컨테이너 크기가 바뀌면 relayout
   useEffect(() => {
