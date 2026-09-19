@@ -93,7 +93,8 @@ export async function tmapPedestrian(from: LatLng, to: LatLng): Promise<Route> {
         lat,
         lng,
         turn: TURN[f.properties.turnType] ?? "unknown",
-        pathIndex: path.length,
+        // 안내 지점 좌표는 직전 LineString 의 마지막 점과 같다 (중복 제거되어 새로 push 되지 않음)
+        pathIndex: Math.max(0, path.length - 1),
       });
     } else {
       for (const [lng, lat] of f.geometry.coordinates) {
