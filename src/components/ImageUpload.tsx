@@ -29,11 +29,16 @@ export default function ImageUpload({ initialUrl, disabled, onChange }: Props) {
     setError(null);
     try {
       const resized = await resizeImage(file);
-      // input.files 는 읽기 전용이라 DataTransfer 로 교체한다
-      const dt = new DataTransfer();
-      dt.items.add(resized);
-      inputRef.current.files = dt.files;
-      const url = URL.createObjectURL(resized);
+      // input.files 는 읽기 전용이라 DataTransfer 로 교체한다.
+      // 교체가 안 되는 브라우저면 원본 파일이 그대로 남아 그걸 전송한다.
+      let toPreview: File = file;
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(resized);
+        inputRef.current.files = dt.files;
+        if (inputRef.current.files?.[0]?.size === resized.size) toPreview = resized;
+      } catch {}
+      const url = URL.createObjectURL(toPreview);
       setPreview(url);
       setRemoved(false);
       onChange?.(url);

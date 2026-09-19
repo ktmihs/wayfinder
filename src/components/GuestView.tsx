@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AddressSearch from "@/components/AddressSearch";
 import Cover from "@/components/Cover";
 import RouteRenderer from "@/components/RouteRenderer";
@@ -15,20 +15,9 @@ export type Origin = { lat: number; lng: number; label: string };
  * 1) 도착지 정보 확인 → 2) 출발지 입력(검색 or 현재 위치) → 3) 관리자가 고른 방식으로 경로 표시
  */
 export default function GuestView({ place }: { place: PublicPlace }) {
-  // 커버는 탭당 한 번만 보여준다 (뒤로가기/새로고침 때 또 안 뜨게)
-  const coverKey = `cover-seen:${place.id}`;
+  // 링크를 열 때마다 커버부터 보여준다 (한 번 탭이면 되니 건너뛰지 않는다)
   const [started, setStarted] = useState(false);
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem(coverKey)) setStarted(true);
-    } catch {}
-  }, [coverKey]);
-  function start() {
-    try {
-      sessionStorage.setItem(coverKey, "1");
-    } catch {}
-    setStarted(true);
-  }
+  const start = () => setStarted(true);
 
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [locating, setLocating] = useState(false);

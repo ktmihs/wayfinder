@@ -14,7 +14,7 @@ const adminKey = customAlphabet("23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRS
 
 export type FormState = { error?: string; ok?: true } | null;
 
-const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 function str(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -50,7 +50,7 @@ function parsePlaceForm(formData: FormData) {
   if (eventAt && Number.isNaN(eventAt.getTime())) return { error: "행사 일시가 올바르지 않아요." } as const;
   if (imageFile) {
     if (!imageFile.type.startsWith("image/")) return { error: "이미지 파일만 올릴 수 있어요." } as const;
-    if (imageFile.size > MAX_IMAGE_BYTES) return { error: "이미지가 너무 커요 (3MB 이하)." } as const;
+    if (imageFile.size > MAX_IMAGE_BYTES) return { error: "이미지가 너무 커요 (4MB 이하)." } as const;
   }
 
   return {

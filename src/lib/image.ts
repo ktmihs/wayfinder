@@ -5,6 +5,9 @@
  * 폰 사진(3~8MB)을 그대로 올리지 않기 위함. 결과는 보통 100~300KB.
  */
 export async function resizeImage(file: File, maxSize = 1600, quality = 0.85): Promise<File> {
+  // 리사이즈가 불가능한 환경이면 원본을 그대로 쓴다 (서버에서 크기 제한으로 걸러짐)
+  if (typeof createImageBitmap !== "function") return file;
+
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale);
@@ -16,7 +19,10 @@ export async function resizeImage(file: File, maxSize = 1600, quality = 0.85): P
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
 
-  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/webp", quality));
+  // JPEG 는 모든 브라우저가 인코딩 가능. (사파리 일부 버전은 WebP 인코딩 미지원)
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", quality));
   if (!blob) throw new Error("이미지 변환에 실패했어요.");
-  return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", { type: "image/webp" });
+  const type = blob.type || "image/jpeg";
+  const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
+  return new File([blob], file.name.replace(/\.[^.]+$/, "") + "." + ext, { type });
 }

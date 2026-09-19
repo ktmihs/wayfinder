@@ -67,6 +67,7 @@ export default async function AdminPage({
 
       <h2 className="mt-10 mb-4 text-lg font-bold">설정 수정</h2>
       <PlaceForm
+        key={place.updatedAt.toISOString()}
         action={updatePlace.bind(null, place.adminKey)}
         initial={place}
         submitLabel="변경 사항 저장"
