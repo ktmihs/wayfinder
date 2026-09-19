@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import PlaceForm from "@/components/PlaceForm";
 import ShareCard from "@/components/ShareCard";
 import DeleteButton from "./DeleteButton";
+import AdminLinkCard from "./AdminLinkCard";
 import { getPlaceByAdminKey } from "@/lib/places";
 import { getBaseUrl } from "@/lib/url";
 import { updatePlace } from "@/app/actions";
 import { getMode, parseModes } from "@/lib/modes";
 import { isStorageConfigured } from "@/lib/supabase";
 
-export const metadata = { title: "관리" };
+export const metadata = { title: "관리", robots: { index: false, follow: false } };
 
 export default async function AdminPage({
   params,
@@ -55,14 +56,8 @@ export default async function AdminPage({
         <ShareCard url={guestUrl} title={place.name} />
       </div>
 
-      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <div className="text-sm font-semibold text-amber-900">관리 링크 (나만 보기)</div>
-        <p className="mt-0.5 text-xs text-amber-800">
-          이 주소를 알면 누구나 수정할 수 있어요. 북마크해 두고 손님에게는 보내지 마세요.
-        </p>
-        <div className="mt-2 truncate rounded-lg bg-white/70 px-3 py-2 font-mono text-xs text-amber-900">
-          {adminUrl}
-        </div>
+      <div className="mt-3">
+        <AdminLinkCard adminUrl={adminUrl} name={place.name} />
       </div>
 
       <h2 className="mt-10 mb-4 text-lg font-bold">설정 수정</h2>
