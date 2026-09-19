@@ -67,6 +67,8 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
 
   // 캐릭터 안내: 재생 중이면 경로를 따라 걷고, 실시간 안내 중이면 내 위치에 선다
   const playback = useWalkPlayback(route, useCharacter && !navigating);
+  // 사용자가 지도를 손으로 움직이면 캐릭터 따라가기를 끈다. '캐릭터로' 버튼으로 다시 켠다
+  const [followChar, setFollowChar] = useState(true);
   const lastMe = useRef<CharacterPose | null>(null);
   const liveCharacter: CharacterPose | null = useMemo(() => {
     if (!useCharacter || !navigating || !me) return null;
@@ -148,9 +150,24 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
           me={me}
           follow={navigating && follow}
           character={character}
-          followCharacter={useCharacter && !navigating && playback.playing}
+          followCharacter={useCharacter && !navigating && playback.playing && followChar}
+          onUserDrag={() => {
+            if (useCharacter && !navigating) setFollowChar(false);
+            if (navigating) setFollow(false);
+          }}
           className={origin ? "h-[45vh]" : "h-[55vh]"}
         />
+
+        {/* 캐릭터 따라가기 복귀 */}
+        {useCharacter && !navigating && !followChar && (
+          <button
+            type="button"
+            onClick={() => setFollowChar(true)}
+            className="absolute right-3 bottom-3 z-10 rounded-full bg-white px-3 py-2 text-xs font-semibold text-neutral-800 shadow-lg"
+          >
+            🚶 캐릭터로
+          </button>
+        )}
 
         {/* 캐릭터 재생 중 다음 안내 캡션 */}
         {useCharacter && !navigating && route && (() => {
@@ -159,7 +176,7 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
           const nx = route.steps[Math.min(idx + 1, route.steps.length - 1)];
           const left = Math.max(0, playback.cumAt(nx.pathIndex) - playback.dist);
           return (
-            <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-center">
+            <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex justify-center">
               <div className="rounded-xl border-2 border-[#3d2a2a] bg-[#fff8e7] px-3 py-1.5 text-sm font-semibold text-[#3d2a2a] shadow-[3px_3px_0_#3d2a2a]">
                 {playback.arrived ? "🏠 도착!" : `${TURN_ICON[nx.turn]} ${nx.description}`}
                 {!playback.arrived && <span className="ml-2 font-normal opacity-70">{formatDistance(left)}</span>}
@@ -168,24 +185,9 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
           );
         })()}
 
-        {/* 캐릭터 재생 컨트롤 (실시간 안내 중엔 숨김) */}
-        {useCharacter && !navigating && (
-          <div className="absolute inset-x-3 bottom-3">
-            <PlaybackBar
-              playing={playback.playing}
-              arrived={playback.arrived}
-              dist={playback.dist}
-              total={playback.total}
-              speed={playback.speed}
-              onToggle={playback.toggle}
-              onSeek={playback.seek}
-              onSpeed={playback.cycleSpeed}
-            />
-          </div>
-        )}
 
         {status === "loading" && (
-          <div className="absolute inset-x-0 top-3 flex justify-center">
+          <div className="absolute inset-x-0 top-3 z-10 flex justify-center">
             <span className="rounded-full bg-white/95 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow">
               경로 찾는 중…
             </span>
@@ -194,7 +196,7 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
 
         {/* 실시간 안내 배너 — 오른쪽 ✕ 로 언제든 종료 */}
         {navigating && (
-          <div className="absolute inset-x-3 top-3">
+          <div className="absolute inset-x-3 top-3 z-10">
             <div
               className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-lg ${
                 nav?.arrived
@@ -237,7 +239,7 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
 
         {/* 경로 이탈 → 재안내 묻기 */}
         {askReroute && (
-          <div className="absolute inset-0 z-20 flex items-end bg-black/40 p-3">
+          <div className="absolute inset-0 z-30 flex items-end bg-black/40 p-3">
             <div className="w-full rounded-2xl bg-white p-5 shadow-xl">
               <p className="text-base font-bold">경로에서 벗어났어요</p>
               <p className="mt-1 text-sm text-neutral-600">
@@ -268,7 +270,7 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
           <button
             type="button"
             onClick={() => setFollow((f) => !f)}
-            className={`absolute right-3 bottom-3 rounded-full px-3 py-2 text-xs font-semibold shadow-lg ${
+            className={`absolute right-3 bottom-3 z-10 rounded-full px-3 py-2 text-xs font-semibold shadow-lg ${
               follow ? "bg-sky-600 text-white" : "bg-white text-neutral-800"
             }`}
           >
@@ -276,6 +278,25 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
           </button>
         )}
       </div>
+
+      {/* 캐릭터 재생 컨트롤 — 지도 아래에 두어 지도에 가려지지도, 지도를 가리지도 않게 */}
+      {useCharacter && !navigating && (
+        <div className="px-3 pt-3">
+          <PlaybackBar
+            playing={playback.playing}
+            arrived={playback.arrived}
+            dist={playback.dist}
+            total={playback.total}
+            speed={playback.speed}
+            onToggle={() => {
+              playback.toggle();
+              setFollowChar(true);
+            }}
+            onSeek={playback.seek}
+            onSpeed={playback.cycleSpeed}
+          />
+        </div>
+      )}
 
       {!origin && (
         <p className="px-5 py-3 text-center text-xs text-neutral-500">

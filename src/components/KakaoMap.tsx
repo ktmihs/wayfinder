@@ -24,6 +24,8 @@ type Props = {
   character?: (LatLng & { dir: Dir; frame: number; vehicle?: Vehicle }) | null;
   /** 캐릭터 위치에 지도를 맞출지 */
   followCharacter?: boolean;
+  /** 사용자가 지도를 손으로 움직이기 시작했을 때 (따라가기 해제용) */
+  onUserDrag?: () => void;
   className?: string;
 };
 
@@ -31,13 +33,15 @@ type Props = {
  * 카카오맵을 띄우고 출발/도착 마커를 그린다.
  * 경로(polyline)는 2단계에서 이 컴포넌트 위에 얹는다.
  */
-export default function KakaoMap({ destination, origin, path, legs, me, follow, character, followCharacter, className }: Props) {
+export default function KakaoMap({ destination, origin, path, legs, me, follow, character, followCharacter, onUserDrag, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<Array<{ setMap(map: kakao.maps.Map | null): void }>>([]);
   const meRef = useRef<{ dot: kakao.maps.CustomOverlay; circle: kakao.maps.Circle } | null>(null);
   const charRef = useRef<{ overlay: kakao.maps.CustomOverlay; img: HTMLImageElement; key: string } | null>(null);
   const panningRef = useRef(false);
+  const onUserDragRef = useRef(onUserDrag);
+  onUserDragRef.current = onUserDrag;
   const [error, setError] = useState<string | null>(null);
 
   // 최초 1회: 지도 생성
@@ -52,6 +56,8 @@ export default function KakaoMap({ destination, origin, path, legs, me, follow, 
         });
         // 레이아웃이 아직 안 잡힌 상태에서 생성됐을 수 있으니 한 프레임 뒤에 크기 재계산
         requestAnimationFrame(() => mapRef.current?.relayout());
+        // 사용자가 직접 드래그하면 따라가기를 풀 수 있게 알린다 (프로그램 panTo 는 dragstart 를 내지 않는다)
+        k.maps.event.addListener(mapRef.current, "dragstart", () => onUserDragRef.current?.());
       })
       .catch((e: Error) => setError(e.message));
     return () => {
