@@ -1,8 +1,11 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import KakaoMap from "@/components/KakaoMap";
-import RouteSteps from "@/components/RouteSteps";
+import RouteSteps, { TURN_ICON } from "@/components/RouteSteps";
 import { useRoute } from "@/lib/route/useRoute";
+import { distanceM, nearestPathIndex, remainingDistance, useLiveLocation } from "@/lib/geo";
+import { formatDistance } from "@/lib/format";
 import type { PublicPlace } from "@/lib/places";
 import type { ModeId } from "@/lib/modes";
 import { getMode } from "@/lib/modes";
@@ -10,15 +13,43 @@ import type { Origin } from "@/components/GuestView";
 
 type Props = { mode: ModeId; place: PublicPlace; origin: Origin | null };
 
+const ARRIVE_M = 25; // 도착지에서 이 거리 안이면 도착 처리
+const OFF_ROUTE_M = 60; // 경로에서 이만큼 벗어나면 안내 문구 변경
+
 /**
  * 안내 방식(mode)에 따라 다른 렌더러를 고른다.
  * 지금은 "map"만 구현되어 있고, 나머지는 준비 중 안내 후 지도로 대체한다.
- * 2단계에서 경로 탐색 결과(좌표 배열 + 턴 안내)를 각 렌더러에 공통으로 넘길 예정.
+ * 모든 렌더러는 useRoute 가 돌려주는 공통 Route JSON 을 소비한다.
  */
 export default function RouteRenderer({ mode, place, origin }: Props) {
   const destination = { lat: place.lat, lng: place.lng, label: place.placeName ?? undefined };
   const info = getMode(mode);
   const { status, route, error } = useRoute(origin, destination);
+
+  // 실시간 안내
+  const [navigating, setNavigating] = useState(false);
+  const [follow, setFollow] = useState(true);
+  const { pos: me, error: geoError } = useLiveLocation(navigating);
+
+  // 내 위치 → 경로상 위치 → 현재 구간 / 남은 거리 / 도착 여부
+  const nav = useMemo(() => {
+    if (!route || !me) return null;
+    const { index, distance: offRoute } = nearestPathIndex(route.path, me);
+    // 이미 지나온 안내 지점 중 마지막 = 현재 진행 중인 구간
+    let step = 0;
+    for (let i = 0; i < route.steps.length; i++) if (route.steps[i].pathIndex <= index) step = i;
+    const next = route.steps[Math.min(step + 1, route.steps.length - 1)];
+    const toNext = distanceM(me, next);
+    const toDest = distanceM(me, destination);
+    return {
+      step,
+      next,
+      toNext,
+      remaining: remainingDistance(route.path, index),
+      arrived: toDest <= ARRIVE_M,
+      offRoute: offRoute > OFF_ROUTE_M,
+    };
+  }, [route, me, destination.lat, destination.lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-full flex-col">
@@ -33,14 +64,59 @@ export default function RouteRenderer({ mode, place, origin }: Props) {
           destination={destination}
           origin={origin}
           path={route?.path}
+          me={me}
+          follow={navigating && follow}
           className={origin ? "h-[45vh]" : "h-[55vh]"}
         />
+
         {status === "loading" && (
           <div className="absolute inset-x-0 top-3 flex justify-center">
             <span className="rounded-full bg-white/95 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow">
               경로 찾는 중…
             </span>
           </div>
+        )}
+
+        {/* 실시간 안내 배너 */}
+        {navigating && (
+          <div className="absolute inset-x-3 top-3">
+            {nav?.arrived ? (
+              <div className="rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-lg">
+                <p className="text-lg font-bold">도착했어요 🎉</p>
+                {place.detail && <p className="mt-0.5 text-sm opacity-90">아래 도착 안내를 확인하세요</p>}
+              </div>
+            ) : nav ? (
+              <div className="rounded-2xl bg-neutral-900/95 px-4 py-3 text-white shadow-lg">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl leading-none">{TURN_ICON[nav.next.turn]}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-semibold">{nav.next.description}</p>
+                    <p className="text-xs opacity-80">
+                      {formatDistance(nav.toNext)} 앞 · 남은 거리 {formatDistance(nav.remaining)}
+                      {nav.offRoute && " · 경로에서 벗어났어요"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-white/95 px-4 py-3 text-sm text-neutral-700 shadow-lg">
+                {geoError ?? "내 위치를 찾는 중… 📡"}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 따라가기 토글 (지도를 손으로 움직인 뒤 다시 돌아올 때) */}
+        {navigating && me && (
+          <button
+            type="button"
+            onClick={() => setFollow((f) => !f)}
+            className={`absolute right-3 bottom-3 rounded-full px-3 py-2 text-xs font-semibold shadow-lg ${
+              follow ? "bg-sky-600 text-white" : "bg-white text-neutral-800"
+            }`}
+          >
+            {follow ? "따라가는 중" : "내 위치로"}
+          </button>
         )}
       </div>
 
@@ -52,7 +128,32 @@ export default function RouteRenderer({ mode, place, origin }: Props) {
       {status === "error" && (
         <p className="mx-5 my-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>
       )}
-      {route && <RouteSteps route={route} />}
+
+      {route && (
+        <div className="px-5 pt-4">
+          <button
+            type="button"
+            onClick={() => {
+              setNavigating((v) => !v);
+              setFollow(true);
+            }}
+            className={`w-full rounded-xl py-3 text-sm font-semibold transition active:scale-[0.99] ${
+              navigating
+                ? "bg-neutral-200 text-neutral-800"
+                : "bg-sky-600 text-white"
+            }`}
+          >
+            {navigating ? "실시간 안내 종료" : "🧭 실시간 안내 시작"}
+          </button>
+          {!navigating && (
+            <p className="mt-1.5 text-center text-[11px] text-neutral-400">
+              걷는 동안 화면을 켜두면 내 위치와 다음 안내를 실시간으로 보여줘요
+            </p>
+          )}
+        </div>
+      )}
+
+      {route && <RouteSteps route={route} currentStep={navigating ? nav?.step : null} />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Route, TurnKind } from "@/lib/route/types";
 import { formatDistance, formatDuration } from "@/lib/format";
 
-const ICON: Record<TurnKind, string> = {
+export const TURN_ICON: Record<TurnKind, string> = {
   start: "🚩",
   end: "🏁",
   straight: "⬆️",
@@ -20,8 +20,14 @@ const ICON: Record<TurnKind, string> = {
   unknown: "•",
 };
 
+type Props = {
+  route: Route;
+  /** 실시간 안내 중 현재 구간 인덱스 (강조 표시) */
+  currentStep?: number | null;
+};
+
 /** 경로 요약 + 턴바이턴 목록 */
-export default function RouteSteps({ route }: { route: Route }) {
+export default function RouteSteps({ route, currentStep }: Props) {
   return (
     <div className="px-5 py-4">
       <div className="flex items-baseline gap-3">
@@ -38,19 +44,34 @@ export default function RouteSteps({ route }: { route: Route }) {
       </div>
 
       <ol className="mt-4 space-y-1">
-        {route.steps.map((s, i) => (
-          <li key={i} className="flex items-start gap-3 rounded-xl bg-white px-3 py-2.5 ring-1 ring-neutral-200">
-            <span className="w-6 shrink-0 text-center text-lg leading-6" aria-hidden>
-              {ICON[s.turn]}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-neutral-900">{s.description}</p>
-              {s.distance > 0 && s.turn !== "end" && (
-                <p className="text-xs text-neutral-500">{formatDistance(s.distance)}</p>
-              )}
-            </div>
-          </li>
-        ))}
+        {route.steps.map((s, i) => {
+          const active = currentStep === i;
+          const done = currentStep != null && i < currentStep;
+          return (
+            <li
+              key={i}
+              className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ring-1 transition ${
+                active
+                  ? "bg-sky-50 ring-sky-300"
+                  : done
+                    ? "bg-neutral-50 opacity-50 ring-neutral-200"
+                    : "bg-white ring-neutral-200"
+              }`}
+            >
+              <span className="w-6 shrink-0 text-center text-lg leading-6" aria-hidden>
+                {done ? "✓" : TURN_ICON[s.turn]}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className={`text-sm ${active ? "font-semibold text-sky-900" : "text-neutral-900"}`}>
+                  {s.description}
+                </p>
+                {s.distance > 0 && s.turn !== "end" && (
+                  <p className="text-xs text-neutral-500">{formatDistance(s.distance)}</p>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
