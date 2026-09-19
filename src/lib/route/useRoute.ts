@@ -38,7 +38,14 @@ export function useRoute(from: LatLng | null, to: LatLng, travel: TravelMode = "
       })
       .catch((e: Error & { code?: string }) => {
         if (e.name === "AbortError") return;
-        setState({ status: "error", route: null, error: e.message, code: e.code });
+        // 네트워크 자체가 끊긴 경우 (fetch 가 TypeError 를 던진다) 는 한글로
+        const offline = e instanceof TypeError || /fetch/i.test(e.message);
+        setState({
+          status: "error",
+          route: null,
+          error: offline ? "인터넷 연결을 확인해 주세요. 연결되면 다시 시도할게요." : e.message,
+          code: e.code,
+        });
       });
 
     return () => ctrl.abort();
