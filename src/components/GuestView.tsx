@@ -112,7 +112,12 @@ export default function GuestView({ place }: { place: PublicPlace }) {
 
       {/* 경로 표시 영역 — 관리자가 고른 모드로 렌더링 */}
       <section className="flex-1">
-        <RouteRenderer mode={mode.id} place={place} origin={origin} />
+        <RouteRenderer
+          mode={mode.id}
+          place={place}
+          origin={origin}
+          onReroute={(p) => setOrigin({ ...p, label: "현재 위치" })}
+        />
       </section>
 
       {/* 도착 후 안내 */}
