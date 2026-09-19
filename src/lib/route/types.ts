@@ -71,6 +71,19 @@ export type Route = {
   legs?: RouteLeg[];
   fare?: number;
   transfers?: number;
+  /** 대중교통 대안 경로 요약. 선택하면 /api/route?alt=index 로 다시 받는다 */
+  alternatives?: RouteAlternative[];
+  /** 이 경로가 alternatives 중 몇 번째인지 */
+  altIndex?: number;
+};
+
+export type RouteAlternative = {
+  index: number;
+  duration: number;
+  fare?: number;
+  transfers: number;
+  /** 대중교통 구간만 (도보 제외) */
+  rides: Array<{ mode: "bus" | "subway" | "other"; name?: string; color?: string }>;
 };
 
 export type RouteProvider = (from: LatLng, to: LatLng) => Promise<Route>;

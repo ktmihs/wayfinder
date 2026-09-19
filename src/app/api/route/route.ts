@@ -13,7 +13,7 @@ function parseLatLng(s: string | null) {
   return { lat, lng };
 }
 
-/** GET /api/route?from=lat,lng&to=lat,lng&travel=walk|transit */
+/** GET /api/route?from=lat,lng&to=lat,lng&travel=walk|transit&alt=0 */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const from = parseLatLng(searchParams.get("from"));
@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "from, to 좌표가 필요해요 (lat,lng)" }, { status: 400 });
   }
   const travel = searchParams.get("travel") === "transit" ? "transit" : "walk";
+  const alt = Math.max(0, Math.min(9, Number(searchParams.get("alt") ?? 0) || 0));
   const straight = haversine(from, to);
   if (travel === "walk" && straight > MAX_WALK_M) {
     return NextResponse.json({ error: "도보로 안내하기엔 너무 멀어요 (30km 이상). 대중교통을 선택해 보세요." }, { status: 422 });
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const route = await findRoute(from, to, travel);
+    const route = await findRoute(from, to, travel, alt);
     return NextResponse.json(route, {
       headers: { "Cache-Control": "public, max-age=600" },
     });

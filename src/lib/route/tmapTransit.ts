@@ -1,4 +1,5 @@
-import type { LatLng, Route, RouteLeg, RouteStep } from "./types";
+import type { LatLng, Route, RouteAlternative, RouteLeg, RouteStep } from "./types";
+import { getCachedRaw, rawKey, setCachedRaw } from "./cache";
 
 // Tmap 대중교통 경로 API — https://transit.tmapmobility.com/docs/routes
 const ENDPOINT = "https://apis.openapi.sk.com/transit/routes";
@@ -48,7 +49,7 @@ function parseLine(s: string | undefined): LatLng[] {
 function cleanRouteName(name: string | undefined, mode: RouteLeg["mode"]) {
   if (!name) return undefined;
   if (mode === "bus") return name.replace(/^[^:]+:/, "");
-  return name.replace(/^수도권/, "");
+  return name.replace(/^수도권\s*/, "").trim();
 }
 
 function stationCount(leg: TmapLeg) {
@@ -63,10 +64,32 @@ function legMode(m: TmapLeg["mode"]): RouteLeg["mode"] {
   return "other";
 }
 
-export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
+type Itinerary = NonNullable<NonNullable<NonNullable<TmapTransitResponse["metaData"]>["plan"]>["itineraries"]>[number];
+
+const MAX_ALTS = 5;
+
+function summarize(its: Itinerary[]): RouteAlternative[] {
+  return its.slice(0, MAX_ALTS).map((it, index) => ({
+    index,
+    duration: it.totalTime,
+    fare: it.fare?.regular?.totalFare,
+    transfers: it.transferCount,
+    rides: it.legs
+      .filter((l) => l.mode !== "WALK")
+      .map((l) => {
+        const mode = legMode(l.mode);
+        return { mode: mode === "walk" ? "other" : mode, name: cleanRouteName(l.route, mode), color: l.routeColor ? `#${l.routeColor.replace("#", "")}` : undefined };
+      }),
+  }));
+}
+
+export async function tmapTransit(from: LatLng, to: LatLng, alt = 0): Promise<Route> {
   const appKey = process.env.TMAP_APP_KEY;
   if (!appKey) throw new Error("TMAP_APP_KEY가 설정되지 않았어요.");
 
+  const key = rawKey("tmap-transit", from, to);
+  let itineraries = getCachedRaw<Itinerary[]>(key);
+  if (!itineraries) {
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", accept: "application/json", appKey },
@@ -75,7 +98,7 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
       startY: String(from.lat),
       endX: String(to.lng),
       endY: String(to.lat),
-      count: 3,
+      count: MAX_ALTS,
       lang: 0,
       format: "json",
     }),
@@ -84,12 +107,15 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
   if (!res.ok) throw new Error(`Tmap 대중교통 응답 오류 ${res.status}: ${(await res.text()).slice(0, 200)}`);
 
   const data = (await res.json()) as TmapTransitResponse;
-  const itineraries = data.metaData?.plan?.itineraries ?? [];
-  if (!itineraries.length) {
+  const list = data.metaData?.plan?.itineraries ?? [];
+  if (!list.length) {
     throw new Error(data.result?.message ?? "대중교통 경로를 찾지 못했어요. 거리가 너무 가깝거나 운행 시간이 아닐 수 있어요.");
   }
-  // 첫 번째(추천) 경로. 지하철/버스 조합 중 가장 빠른 것
-  const it = [...itineraries].sort((a, b) => a.totalTime - b.totalTime)[0];
+  itineraries = [...list].sort((a, b) => a.totalTime - b.totalTime);
+  setCachedRaw(key, itineraries);
+  }
+  const altIndex = Math.min(Math.max(0, alt), itineraries.length - 1);
+  const it = itineraries[altIndex];
 
   const path: LatLng[] = [];
   const steps: RouteStep[] = [];
@@ -178,5 +204,7 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
     legs,
     fare: it.fare?.regular?.totalFare,
     transfers: it.transferCount,
+    alternatives: summarize(itineraries),
+    altIndex,
   };
 }

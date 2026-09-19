@@ -1,4 +1,5 @@
-import type { LatLng, Route, RouteLeg, RouteStep } from "./types";
+import type { LatLng, Route, RouteAlternative, RouteLeg, RouteStep } from "./types";
+import { getCachedRaw, rawKey, setCachedRaw } from "./cache";
 import { osrmFoot } from "./osrm";
 import { tmapPedestrian } from "./tmap";
 import { haversine } from "./geo";
@@ -92,14 +93,41 @@ async function walkGeometry(from: LatLng, to: LatLng): Promise<{ path: LatLng[];
   }
 }
 
-export async function odsayTransit(from: LatLng, to: LatLng): Promise<Route> {
+const MAX_ALTS = 5;
+
+function laneLabel(sp: OdsaySubPath) {
+  const mode = sp.trafficType === 1 ? "subway" : "bus";
+  const lane = sp.lane?.[0] ?? {};
+  const name = mode === "bus" ? lane.busNo : (lane.name ?? "").replace(/^수도권\s*/, "").trim();
+  const color = mode === "bus" ? (BUS_COLOR[lane.type ?? 0] ?? "#0068B7") : subwayColor(lane);
+  return { mode, name, color } as const;
+}
+
+function summarize(paths: OdsayPath[]): RouteAlternative[] {
+  return paths.slice(0, MAX_ALTS).map((p, index) => ({
+    index,
+    duration: p.info.totalTime * 60,
+    fare: p.info.payment,
+    transfers: p.info.busTransitCount + p.info.subwayTransitCount,
+    rides: p.subPath.filter((s) => s.trafficType !== 3).map(laneLabel),
+  }));
+}
+
+export async function odsayTransit(from: LatLng, to: LatLng, alt = 0): Promise<Route> {
   const apiKey = process.env.ODSAY_API_KEY;
   if (!apiKey) throw new Error("ODSAY_API_KEY가 설정되지 않았어요.");
 
-  const q = new URLSearchParams({ SX: String(from.lng), SY: String(from.lat), EX: String(to.lng), EY: String(to.lat), apiKey });
-  const data = (await odsayGet(`${SEARCH}?${q}`)) as { result?: { path?: OdsayPath[] } };
-  const p = data.result?.path?.[0];
-  if (!p) throw new Error("대중교통 경로를 찾지 못했어요. 거리가 너무 가깝거나 운행 시간이 아닐 수 있어요.");
+  const key = rawKey("odsay", from, to);
+  let paths = getCachedRaw<OdsayPath[]>(key);
+  if (!paths) {
+    const q = new URLSearchParams({ SX: String(from.lng), SY: String(from.lat), EX: String(to.lng), EY: String(to.lat), apiKey });
+    const data = (await odsayGet(`${SEARCH}?${q}`)) as { result?: { path?: OdsayPath[] } };
+    paths = data.result?.path ?? [];
+    if (!paths.length) throw new Error("대중교통 경로를 찾지 못했어요. 거리가 너무 가깝거나 운행 시간이 아닐 수 있어요.");
+    setCachedRaw(key, paths);
+  }
+  const altIndex = Math.min(Math.max(0, alt), Math.min(paths.length, MAX_ALTS) - 1);
+  const p = paths[altIndex];
 
   // 대중교통 구간 좌표 (subPath 의 대중교통 구간 순서대로 lane 이 온다)
   const laneData = (await odsayGet(`${LANE}?${new URLSearchParams({ mapObject: `0:0@${p.info.mapObj}`, apiKey })}`)) as {
@@ -157,14 +185,12 @@ export async function odsayTransit(from: LatLng, to: LatLng): Promise<Route> {
       legs.push({ mode: "walk", from: "", to: "", distance: sp.distance, duration: sp.sectionTime * 60, pathStart, pathEnd: Math.max(pathStart, path.length - 1) });
       cursor = w.path[w.path.length - 1];
     } else {
-      const mode = sp.trafficType === 1 ? "subway" : "bus";
-      const lane = sp.lane?.[0] ?? {};
+      const { mode, name, color } = laneLabel(sp);
       const startPt = { lat: sp.startY!, lng: sp.startX! };
       const endPt = { lat: sp.endY!, lng: sp.endX! };
       const geom = lanes[laneIdx++]?.section.flatMap((s) => s.graphPos.map((g) => ({ lat: g.y, lng: g.x }))) ?? [];
       const idx = Math.max(0, path.length - 1);
       pushPath(geom.length ? [startPt, ...geom, endPt] : [startPt, endPt]);
-      const name = mode === "bus" ? lane.busNo : (lane.name ?? "").replace(/^수도권/, "");
       const stops = sp.stationCount ?? (sp.passStopList?.stations.length ? sp.passStopList.stations.length - 1 : undefined);
       steps.push({
         description: `${name ? (mode === "bus" ? `${name}번 버스` : name) : mode === "subway" ? "지하철" : "버스"} 탑승 · ${sp.startName} → ${sp.endName}${stops ? ` (${stops}정거장)` : ""}`,
@@ -177,7 +203,7 @@ export async function odsayTransit(from: LatLng, to: LatLng): Promise<Route> {
       legs.push({
         mode,
         name,
-        color: mode === "bus" ? (BUS_COLOR[lane.type ?? 0] ?? "#0068B7") : subwayColor(lane),
+        color,
         from: sp.startName ?? "",
         to: sp.endName ?? "",
         distance: sp.distance,
@@ -203,5 +229,7 @@ export async function odsayTransit(from: LatLng, to: LatLng): Promise<Route> {
     legs,
     fare: p.info.payment,
     transfers: p.info.busTransitCount + p.info.subwayTransitCount,
+    alternatives: summarize(paths),
+    altIndex,
   };
 }

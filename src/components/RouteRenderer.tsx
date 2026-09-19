@@ -44,10 +44,12 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
     [place.lat, place.lng, place.placeName],
   );
   const info = getMode(mode);
-  const { status, route, error, ...routeState } = useRoute(origin, destination, travel);
+  const [alt, setAlt] = useState(0);
+  const { status, route, error, ...routeState } = useRoute(origin, destination, travel, alt);
   const errorCode = "code" in routeState ? routeState.code : undefined;
 
   const useCharacter = mode === "character" && !!route;
+  useEffect(() => setAlt(0), [origin?.lat, origin?.lng, travel]);
 
   // 실시간 안내
   const [navigating, setNavigating] = useState(false);
@@ -362,7 +364,16 @@ export default function RouteRenderer({ modes, place, origin, travel, onTravelFa
         </div>
       )}
 
-      {route && <RouteSteps route={route} currentStep={navigating ? nav?.step : null} />}
+      {route && (
+        <RouteSteps
+          route={route}
+          currentStep={navigating ? nav?.step : null}
+          onSelectAlt={(i) => {
+            setAlt(i);
+            if (navigating) stopNavigating();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -10,7 +10,7 @@ type State =
   | { status: "error"; route: null; error: string; code?: string };
 
 /** 출발/도착이 정해지면 /api/route 를 호출해 경로를 가져온다. */
-export function useRoute(from: LatLng | null, to: LatLng, travel: TravelMode = "walk"): State {
+export function useRoute(from: LatLng | null, to: LatLng, travel: TravelMode = "walk", alt = 0): State {
   const [state, setState] = useState<State>({ status: "idle", route: null, error: null });
 
   useEffect(() => {
@@ -19,12 +19,13 @@ export function useRoute(from: LatLng | null, to: LatLng, travel: TravelMode = "
       return;
     }
     const ctrl = new AbortController();
-    setState({ status: "loading", route: null, error: null });
+    setState((prev) => (prev.status === "ok" && alt !== (prev.route.altIndex ?? 0) ? prev : { status: "loading", route: null, error: null }));
 
     const qs = new URLSearchParams({
       from: `${from.lat},${from.lng}`,
       to: `${to.lat},${to.lng}`,
       travel,
+      alt: String(alt),
     });
     fetch(`/api/route?${qs}`, { signal: ctrl.signal })
       .then(async (res) => {
@@ -49,7 +50,7 @@ export function useRoute(from: LatLng | null, to: LatLng, travel: TravelMode = "
       });
 
     return () => ctrl.abort();
-  }, [from?.lat, from?.lng, to.lat, to.lng, travel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [from?.lat, from?.lng, to.lat, to.lng, travel, alt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return state;
 }

@@ -5,6 +5,7 @@ import type { LatLng, Route, TravelMode } from "./types";
 const TTL_MS = 30 * 60 * 1000;
 const MAX_ENTRIES = 500;
 const store = new Map<string, { at: number; route: Route }>();
+const raw = new Map<string, { at: number; value: unknown }>(); // 제공자 원본 검색 결과 (대안 경로 전환용)
 
 function cellKey(p: LatLng) {
   // 소수 4자리 ≈ 11m, 여기선 0.0005 (≈ 50m) 격자
@@ -12,8 +13,26 @@ function cellKey(p: LatLng) {
   return `${q(p.lat).toFixed(4)},${q(p.lng).toFixed(4)}`;
 }
 
-export function routeCacheKey(from: LatLng, to: LatLng, travel: TravelMode) {
-  return `${travel}|${cellKey(from)}|${cellKey(to)}`;
+export function routeCacheKey(from: LatLng, to: LatLng, travel: TravelMode, alt = 0) {
+  return `${travel}|${alt}|${cellKey(from)}|${cellKey(to)}`;
+}
+
+/** 제공자 원본 응답 캐시 (같은 출발/도착의 다른 대안을 고를 때 검색 API 를 다시 안 부른다) */
+export function getCachedRaw<T>(key: string): T | null {
+  const hit = raw.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > TTL_MS) {
+    raw.delete(key);
+    return null;
+  }
+  return hit.value as T;
+}
+export function setCachedRaw(key: string, value: unknown) {
+  if (raw.size >= MAX_ENTRIES) raw.clear();
+  raw.set(key, { at: Date.now(), value });
+}
+export function rawKey(provider: string, from: LatLng, to: LatLng) {
+  return `${provider}|${cellKey(from)}|${cellKey(to)}`;
 }
 
 export function getCachedRoute(key: string): Route | null {
