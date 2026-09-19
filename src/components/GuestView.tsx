@@ -82,6 +82,28 @@ export default function GuestView({ place }: { place: PublicPlace }) {
         </p>
       </header>
 
+      {/* 이동 수단 */}
+      <section className="px-5 pb-3">
+        <div className="grid grid-cols-2 gap-2">
+          {(["walk", "transit"] as const).map((t) => {
+            const on = effectiveTravel === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTravel(t)}
+                aria-pressed={on}
+                className={`rounded-xl border py-3 text-sm font-semibold transition ${
+                  on ? "border-sky-500 bg-sky-50 text-sky-900 ring-2 ring-sky-100" : "border-neutral-200 bg-white text-neutral-600"
+                }`}
+              >
+                {t === "walk" ? "🚶 걸어서" : "🚌 대중교통으로"}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       {/* 출발지 입력 */}
       <section className="px-5 pb-4">
         <label className="block text-sm font-semibold">어디서 출발하세요?</label>
@@ -104,23 +126,9 @@ export default function GuestView({ place }: { place: PublicPlace }) {
         </button>
         {geoError && <p className="mt-2 text-xs text-rose-600">{geoError}</p>}
         {origin && (
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-xs text-neutral-500">
-              출발: <span className="font-medium text-neutral-800">{origin.label}</span>
-            </p>
-            <div className="inline-flex shrink-0 rounded-full bg-neutral-100 p-1 text-xs font-semibold">
-              {(["walk", "transit"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTravel(t)}
-                  className={`rounded-full px-3 py-1.5 ${effectiveTravel === t ? "bg-white text-neutral-900 shadow" : "text-neutral-500"}`}
-                >
-                  {t === "walk" ? "🚶 도보" : "🚌 대중교통"}
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="mt-2 text-xs text-neutral-500">
+            출발: <span className="font-medium text-neutral-800">{origin.label}</span>
+          </p>
         )}
       </section>
 
