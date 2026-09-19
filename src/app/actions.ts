@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { customAlphabet } from "nanoid";
 import { prisma } from "@/lib/db";
-import { isModeId } from "@/lib/modes";
+import { isModeId, serializeModes, type ModeId } from "@/lib/modes";
 import { isThemeId } from "@/lib/themes";
 import { deleteCoverByUrl, uploadCover } from "@/lib/supabase";
 
@@ -38,7 +38,7 @@ function parsePlaceForm(formData: FormData) {
   const detail = str(formData, "detail") || null;
   const lat = Number(formData.get("lat"));
   const lng = Number(formData.get("lng"));
-  const mode = str(formData, "mode") || "map";
+  const modes = [...new Set(formData.getAll("modes").map(String).filter(isModeId))] as ModeId[];
 
   // 온보딩(커버)
   const hostName = str(formData, "hostName") || null;
@@ -57,7 +57,7 @@ function parsePlaceForm(formData: FormData) {
   if (!address || !Number.isFinite(lat) || !Number.isFinite(lng)) {
     return { error: "도착지 주소를 검색해서 목록에서 선택해 주세요." } as const;
   }
-  if (!isModeId(mode)) return { error: "올바르지 않은 안내 방식이에요." } as const;
+  if (!modes.length) return { error: "안내 방식을 하나 이상 골라 주세요." } as const;
   if (!isThemeId(theme)) return { error: "올바르지 않은 테마예요." } as const;
   if (eventAt && Number.isNaN(eventAt.getTime())) return { error: "행사 일시가 올바르지 않아요." } as const;
   if (imageFile) {
@@ -66,7 +66,7 @@ function parsePlaceForm(formData: FormData) {
   }
 
   return {
-    data: { name, address, roadAddress, placeName, detail, lat, lng, mode, hostName, greeting, theme, eventAt },
+    data: { name, address, roadAddress, placeName, detail, lat, lng, modes: serializeModes(modes), hostName, greeting, theme, eventAt },
     imageFile,
     removeImage,
   } as const;

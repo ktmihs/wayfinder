@@ -40,3 +40,14 @@ export function isModeId(value: string): value is ModeId {
 export function getMode(id: string) {
   return MODES.find((m) => m.id === id) ?? MODES[0];
 }
+
+/** "map,tile2d" → ["map","tile2d"]. 알 수 없는 값은 버리고, 비면 ["map"] */
+export function parseModes(csv: string): ModeId[] {
+  const list = csv.split(",").map((m) => m.trim()).filter(isModeId);
+  const uniq = [...new Set(list)];
+  return uniq.length ? uniq : ["map"];
+}
+
+export function serializeModes(modes: ModeId[]) {
+  return modes.join(",");
+}

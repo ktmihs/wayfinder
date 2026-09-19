@@ -6,7 +6,7 @@ import Cover from "@/components/Cover";
 import RouteRenderer from "@/components/RouteRenderer";
 import type { PublicPlace } from "@/lib/places";
 import { coordToRegionName, type SearchResult } from "@/lib/kakao";
-import { getMode } from "@/lib/modes";
+import { parseModes } from "@/lib/modes";
 
 export type Origin = { lat: number; lng: number; label: string };
 
@@ -22,7 +22,7 @@ export default function GuestView({ place }: { place: PublicPlace }) {
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
-  const mode = getMode(place.mode);
+  const modes = parseModes(place.modes);
 
   function useCurrentLocation() {
     if (!navigator.geolocation) {
@@ -107,7 +107,7 @@ export default function GuestView({ place }: { place: PublicPlace }) {
       {/* 경로 표시 영역 — 관리자가 고른 모드로 렌더링 */}
       <section className="flex-1">
         <RouteRenderer
-          mode={mode.id}
+          modes={modes}
           place={place}
           origin={origin}
           onReroute={(p) => setOrigin({ ...p, label: "현재 위치" })}

@@ -8,7 +8,7 @@ import ThemePicker from "@/components/ThemePicker";
 import ImageUpload from "@/components/ImageUpload";
 import Cover from "@/components/Cover";
 import type { FormState } from "@/app/actions";
-import type { ModeId } from "@/lib/modes";
+import { parseModes, type ModeId } from "@/lib/modes";
 import type { ThemeId } from "@/lib/themes";
 import type { SearchResult } from "@/lib/kakao";
 import { toDatetimeLocal } from "@/lib/format";
@@ -16,7 +16,7 @@ import { toDatetimeLocal } from "@/lib/format";
 type Initial = {
   name: string;
   detail: string | null;
-  mode: string;
+  modes: string;
   address: string;
   roadAddress: string | null;
   placeName: string | null;
@@ -53,7 +53,7 @@ export default function PlaceForm({ action, initial, submitLabel, storageReady }
         }
       : null,
   );
-  const [mode, setMode] = useState<ModeId>((initial?.mode as ModeId) ?? "map");
+  const [modes, setModes] = useState<ModeId[]>(initial ? parseModes(initial.modes) : ["map"]);
 
   // 커버 미리보기용 상태
   const [name, setName] = useState(initial?.name ?? "");
@@ -108,9 +108,11 @@ export default function PlaceForm({ action, initial, submitLabel, storageReady }
         />
       </Field>
 
-      <Field label="경로 안내 방식" hint="손님에게 어떤 형태로 길을 보여줄지 골라요.">
-        <ModePicker value={mode} onChange={setMode} />
-        <input type="hidden" name="mode" value={mode} />
+      <Field label="경로 안내 방식" hint="여러 개 고르면 손님이 그중에서 골라 볼 수 있어요.">
+        <ModePicker value={modes} onChange={setModes} />
+        {modes.map((m) => (
+          <input key={m} type="hidden" name="modes" value={m} />
+        ))}
       </Field>
 
       {/* ───── 초대 커버 ───── */}

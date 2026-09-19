@@ -14,7 +14,8 @@ import type { Origin } from "@/components/GuestView";
 import type { LatLng } from "@/lib/route/types";
 
 type Props = {
-  mode: ModeId;
+  /** 관리자가 허용한 안내 방식들. 손님이 이 중 하나를 고른다 */
+  modes: ModeId[];
   place: PublicPlace;
   origin: Origin | null;
   /** 경로 이탈 시 현재 위치를 새 출발지로 요청 */
@@ -30,7 +31,8 @@ const OFF_ROUTE_ASK_MS = 10_000; // GPS 튐을 걸러내기 위해 이만큼 계
  * 지금은 "map"만 구현되어 있고, 나머지는 준비 중 안내 후 지도로 대체한다.
  * 모든 렌더러는 useRoute 가 돌려주는 공통 Route JSON 을 소비한다.
  */
-export default function RouteRenderer({ mode, place, origin, onReroute }: Props) {
+export default function RouteRenderer({ modes, place, origin, onReroute }: Props) {
+  const [mode, setMode] = useState<ModeId>(modes[0]);
   const destination = useMemo(
     () => ({ lat: place.lat, lng: place.lng, label: place.placeName ?? undefined }),
     [place.lat, place.lng, place.placeName],
@@ -38,9 +40,7 @@ export default function RouteRenderer({ mode, place, origin, onReroute }: Props)
   const info = getMode(mode);
   const { status, route, error } = useRoute(origin, destination);
 
-  // tile2d 모드에서 잠깐 지도로 전환
-  const [showMap, setShowMap] = useState(false);
-  const useTile = mode === "tile2d" && !!route && !showMap;
+  const useTile = mode === "tile2d" && !!route;
 
   // 실시간 안내
   const [navigating, setNavigating] = useState(false);
@@ -229,23 +229,23 @@ export default function RouteRenderer({ mode, place, origin, onReroute }: Props)
         <p className="mx-5 my-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>
       )}
 
-      {mode === "tile2d" && route && (
+      {/* 안내 방식 선택 (관리자가 여러 개 허용했을 때) */}
+      {modes.length > 1 && route && (
         <div className="flex justify-center px-5 pt-3">
           <div className="inline-flex rounded-full bg-neutral-100 p-1 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setShowMap(false)}
-              className={`rounded-full px-3 py-1.5 ${!showMap ? "bg-white text-neutral-900 shadow" : "text-neutral-500"}`}
-            >
-              🕹️ 마을 지도
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowMap(true)}
-              className={`rounded-full px-3 py-1.5 ${showMap ? "bg-white text-neutral-900 shadow" : "text-neutral-500"}`}
-            >
-              🗺️ 실제 지도
-            </button>
+            {modes.map((m) => {
+              const mi = getMode(m);
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`rounded-full px-3 py-1.5 ${mode === m ? "bg-white text-neutral-900 shadow" : "text-neutral-500"}`}
+                >
+                  {mi.emoji} {mi.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

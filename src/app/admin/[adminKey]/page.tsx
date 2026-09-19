@@ -6,7 +6,7 @@ import DeleteButton from "./DeleteButton";
 import { getPlaceByAdminKey } from "@/lib/places";
 import { getBaseUrl } from "@/lib/url";
 import { updatePlace } from "@/app/actions";
-import { getMode } from "@/lib/modes";
+import { getMode, parseModes } from "@/lib/modes";
 import { isStorageConfigured } from "@/lib/supabase";
 
 export const metadata = { title: "관리" };
@@ -23,7 +23,7 @@ export default async function AdminPage({
   const base = await getBaseUrl();
   const guestUrl = `${base}/go/${place.id}`;
   const adminUrl = `${base}/admin/${place.adminKey}`;
-  const mode = getMode(place.mode);
+  const modes = parseModes(place.modes).map(getMode);
 
   return (
     <main className="mx-auto w-full max-w-md px-5 py-6">
@@ -48,7 +48,7 @@ export default async function AdminPage({
         {place.roadAddress ?? place.address}
       </p>
       <p className="mt-1 text-xs text-neutral-500">
-        현재 안내 방식: {mode.emoji} {mode.label}
+        안내 방식: {modes.map((m) => `${m.emoji} ${m.label}`).join(" · ")}
       </p>
 
       <div className="mt-5">
