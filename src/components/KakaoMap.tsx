@@ -33,6 +33,8 @@ export default function KakaoMap({ destination, origin, className }: Props) {
           center: new k.maps.LatLng(destination.lat, destination.lng),
           level: 4,
         });
+        // 레이아웃이 아직 안 잡힌 상태에서 생성됐을 수 있으니 한 프레임 뒤에 크기 재계산
+        requestAnimationFrame(() => mapRef.current?.relayout());
       })
       .catch((e: Error) => setError(e.message));
     return () => {
@@ -93,7 +95,8 @@ export default function KakaoMap({ destination, origin, className }: Props) {
 
   return (
     <div className={`relative overflow-hidden bg-neutral-100 ${className ?? ""}`}>
-      <div ref={containerRef} className="h-full w-full" />
+      {/* absolute로 채워야 부모가 min-height만 있어도 높이가 0이 되지 않는다 */}
+      <div ref={containerRef} className="absolute inset-0" />
       {error && (
         <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-neutral-600">
           {error}

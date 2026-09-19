@@ -89,3 +89,17 @@ export async function searchAddress(query: string): Promise<SearchResult[]> {
     return true;
   });
 }
+
+/** 좌표 → "서울 강남구 역삼동" 같은 짧은 지역명. 실패하면 null. */
+export async function coordToRegionName(lat: number, lng: number): Promise<string | null> {
+  const k = await loadKakao();
+  const geocoder = new k.maps.services.Geocoder();
+  return new Promise((resolve) => {
+    geocoder.coord2RegionCode(lng, lat, (result, status) => {
+      if (status !== k.maps.services.Status.OK || !result.length) return resolve(null);
+      // H(행정동) 보다 B(법정동)가 익숙한 이름이라 우선
+      const r = result.find((x) => x.region_type === "B") ?? result[0];
+      resolve(`${r.region_1depth_name} ${r.region_2depth_name} ${r.region_3depth_name}`.trim());
+    });
+  });
+}

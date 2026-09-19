@@ -4,7 +4,7 @@ import { useState } from "react";
 import AddressSearch from "@/components/AddressSearch";
 import RouteRenderer from "@/components/RouteRenderer";
 import type { PublicPlace } from "@/lib/places";
-import type { SearchResult } from "@/lib/kakao";
+import { coordToRegionName, type SearchResult } from "@/lib/kakao";
 import { getMode } from "@/lib/modes";
 
 export type Origin = { lat: number; lng: number; label: string };
@@ -27,9 +27,13 @@ export default function GuestView({ place }: { place: PublicPlace }) {
     setLocating(true);
     setGeoError(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: "현재 위치" });
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setOrigin({ lat, lng, label: "현재 위치" });
         setLocating(false);
+        // 어디로 잡혔는지 알 수 있게 지역명을 붙여준다
+        const region = await coordToRegionName(lat, lng).catch(() => null);
+        if (region) setOrigin({ lat, lng, label: `현재 위치 · ${region}` });
       },
       (err) => {
         setGeoError(
