@@ -44,7 +44,7 @@ export default function Cover({ data, onStart, preview }: Props) {
       ) : data.imageUrl ? (
         <div className={`relative w-full overflow-hidden ${preview ? "aspect-[4/3]" : "aspect-[4/3] max-h-[48vh]"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={data.imageUrl} alt="" className="h-full w-full object-cover" />
+          <img src={data.imageUrl} alt="" decoding="async" className="h-full w-full object-cover" />
           {t.overlay && (
             <div
               className="absolute inset-x-0 bottom-0 h-24"
