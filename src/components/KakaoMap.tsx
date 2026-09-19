@@ -107,7 +107,10 @@ export default function KakaoMap({ destination, origin, path, me, follow, classN
         map.setLevel(4);
       }
     });
-  }, [destination, origin, path]);
+    // 객체 identity 가 아니라 좌표 값이 바뀔 때만 다시 그린다.
+    // (렌더마다 새 객체가 넘어와도 setBounds 가 반복 호출되어 지도가 튕기지 않도록)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destination.lat, destination.lng, destination.label, origin?.lat, origin?.lng, origin?.label, path]);
 
   // 내 위치 점: 경로/마커와 별도로 관리해서 위치 갱신 때 전체를 다시 그리지 않는다
   useEffect(() => {

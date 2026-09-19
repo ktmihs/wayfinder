@@ -30,7 +30,10 @@ const OFF_ROUTE_ASK_MS = 10_000; // GPS 튐을 걸러내기 위해 이만큼 계
  * 모든 렌더러는 useRoute 가 돌려주는 공통 Route JSON 을 소비한다.
  */
 export default function RouteRenderer({ mode, place, origin, onReroute }: Props) {
-  const destination = { lat: place.lat, lng: place.lng, label: place.placeName ?? undefined };
+  const destination = useMemo(
+    () => ({ lat: place.lat, lng: place.lng, label: place.placeName ?? undefined }),
+    [place.lat, place.lng, place.placeName],
+  );
   const info = getMode(mode);
   const { status, route, error } = useRoute(origin, destination);
 
