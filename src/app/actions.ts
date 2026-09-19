@@ -16,6 +16,16 @@ export type FormState = { error?: string; ok?: true } | null;
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
+function isFileLike(v: unknown): v is File {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as File).size === "number" &&
+    typeof (v as File).type === "string" &&
+    typeof (v as File).arrayBuffer === "function"
+  );
+}
+
 function str(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
@@ -37,8 +47,10 @@ function parsePlaceForm(formData: FormData) {
   const eventAtRaw = str(formData, "eventAt");
   const eventAt = eventAtRaw ? new Date(eventAtRaw) : null;
 
+  // instanceof File 은 Next 가 폼을 파싱할 때 쓰는 File 구현이 전역 File 과 다르면 false 가 되어
+  // 파일을 통째로 놓친다. 클래스 대신 파일의 모양(size/type/arrayBuffer)으로 판단한다.
   const image = formData.get("image");
-  const imageFile = image instanceof File && image.size > 0 ? image : null;
+  const imageFile = isFileLike(image) && image.size > 0 ? image : null;
   const removeImage = formData.get("removeImage") === "1";
 
   if (!name) return { error: "안내 페이지 이름을 입력해 주세요." } as const;
