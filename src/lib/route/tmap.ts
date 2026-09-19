@@ -69,8 +69,7 @@ export async function tmapPedestrian(from: LatLng, to: LatLng): Promise<Route> {
       endName: encodeURIComponent("도착"),
       searchOption: "0", // 0 추천, 4 큰길 우선, 10 최단, 30 계단 제외
     }),
-    // 같은 출발/도착은 결과가 거의 안 바뀌므로 Next fetch 캐시 (1시간)
-    next: { revalidate: 3600 },
+    cache: "no-store", // 캐시는 findRoute 의 메모리 캐시가 담당
   });
   if (!res.ok) throw new Error(`Tmap 응답 오류 ${res.status}: ${(await res.text()).slice(0, 200)}`);
 

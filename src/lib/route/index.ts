@@ -2,6 +2,7 @@ import { tmapPedestrian } from "./tmap";
 import { tmapTransit } from "./tmapTransit";
 import { osrmFoot } from "./osrm";
 import type { LatLng, Route, TravelMode } from "./types";
+import { getCachedRoute, routeCacheKey, setCachedRoute } from "./cache";
 
 export type * from "./types";
 
@@ -40,12 +41,25 @@ export async function findTransitRoute(from: LatLng, to: LatLng): Promise<Route>
   } catch (e) {
     const msg = (e as Error).message;
     if (/403|INVALID_API_KEY/.test(msg)) throw new TransitUnavailable("대중교통 안내는 아직 준비 중이에요. 도보로 안내해 드릴게요.");
+    if (/429|QUOTA_EXCEEDED|Limit Exceeded/.test(msg)) {
+      throw new TransitUnavailable("오늘 대중교통 안내 한도를 다 썼어요. 도보로 보여드릴게요.", "QUOTA");
+    }
     throw e;
   }
 }
 
-export class TransitUnavailable extends Error {}
+export class TransitUnavailable extends Error {
+  constructor(message: string, public reason: "KEY" | "QUOTA" = "KEY") {
+    super(message);
+  }
+}
 
-export function findRoute(from: LatLng, to: LatLng, travel: TravelMode) {
-  return travel === "transit" ? findTransitRoute(from, to) : findWalkingRoute(from, to);
+/** 이동수단별 경로. 같은 출발/도착은 30분간 캐시해서 외부 API 한도를 아낀다 */
+export async function findRoute(from: LatLng, to: LatLng, travel: TravelMode) {
+  const key = routeCacheKey(from, to, travel);
+  const cached = getCachedRoute(key);
+  if (cached) return cached;
+  const route = travel === "transit" ? await findTransitRoute(from, to) : await findWalkingRoute(from, to);
+  setCachedRoute(key, route);
+  return route;
 }

@@ -36,7 +36,10 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     if (e instanceof TransitUnavailable) {
-      return NextResponse.json({ error: e.message, code: "TRANSIT_UNAVAILABLE" }, { status: 501 });
+      return NextResponse.json(
+        { error: e.message, code: "TRANSIT_UNAVAILABLE", reason: e.reason },
+        { status: e.reason === "QUOTA" ? 429 : 501 },
+      );
     }
     console.error("[route]", e);
     return NextResponse.json({ error: "경로를 찾지 못했어요. 잠시 후 다시 시도해 주세요." }, { status: 502 });

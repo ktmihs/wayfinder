@@ -79,7 +79,7 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
       lang: 0,
       format: "json",
     }),
-    next: { revalidate: 600 },
+    cache: "no-store", // 캐시는 findRoute 의 메모리 캐시가 담당
   });
   if (!res.ok) throw new Error(`Tmap 대중교통 응답 오류 ${res.status}: ${(await res.text()).slice(0, 200)}`);
 
