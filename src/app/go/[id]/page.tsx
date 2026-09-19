@@ -2,14 +2,24 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import GuestView from "@/components/GuestView";
 import { getPlaceById, toPublicPlace } from "@/lib/places";
+import { formatEventAt } from "@/lib/format";
 
 export async function generateMetadata({ params }: PageProps<"/go/[id]">): Promise<Metadata> {
   const { id } = await params;
   const place = await getPlaceById(id);
   if (!place) return { title: "오시는 길" };
+  const description = [
+    place.hostName && `${place.hostName}님의 초대`,
+    formatEventAt(place.eventAt),
+    place.placeName ?? place.address,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return {
     title: place.name,
-    description: `${place.placeName ?? place.address} 오시는 길`,
+    description,
+    openGraph: { title: place.name, description, type: "website" },
+    twitter: { card: "summary_large_image", title: place.name, description },
   };
 }
 
