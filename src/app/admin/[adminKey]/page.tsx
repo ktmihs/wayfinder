@@ -7,6 +7,7 @@ import { getPlaceByAdminKey } from "@/lib/places";
 import { getBaseUrl } from "@/lib/url";
 import { updatePlace } from "@/app/actions";
 import { getMode } from "@/lib/modes";
+import { isStorageConfigured } from "@/lib/supabase";
 
 export const metadata = { title: "관리" };
 
@@ -15,7 +16,7 @@ export default async function AdminPage({
   searchParams,
 }: PageProps<"/admin/[adminKey]">) {
   const { adminKey } = await params;
-  const { created } = await searchParams;
+  const { created, imageError } = await searchParams;
   const place = await getPlaceByAdminKey(adminKey);
   if (!place) notFound();
 
@@ -33,6 +34,11 @@ export default async function AdminPage({
       {created && (
         <div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           안내 페이지가 만들어졌어요! 🎉
+        </div>
+      )}
+      {imageError && (
+        <div className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          페이지는 만들어졌지만 사진 업로드에 실패했어요. 아래에서 다시 올려주세요.
         </div>
       )}
 
@@ -64,6 +70,7 @@ export default async function AdminPage({
         action={updatePlace.bind(null, place.adminKey)}
         initial={place}
         submitLabel="변경 사항 저장"
+        storageReady={isStorageConfigured()}
       />
 
       <div className="mt-12 border-t border-neutral-200 pt-6">

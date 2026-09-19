@@ -22,6 +22,13 @@ model Place {
   lng         Float
   mode        String   @default("map") // map | tile2d | fps3d | video
   config      String   @default("{}")  // 모드별 추가 설정 (JSON)
+
+  // 온보딩(커버) 화면
+  hostName    String?           // 초대하는 사람. 예: "민수 & 지영"
+  eventAt     DateTime?         // 행사 일시
+  greeting    String?           // 인사말
+  imageUrl    String?           // 대표 이미지 (Supabase Storage 공개 URL)
+  theme       String   @default("rose") // 커버 색상 테마 키
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

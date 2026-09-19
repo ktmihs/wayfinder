@@ -18,6 +18,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - `src/app/go/[id]` — 손님: 출발지 입력 → `RouteRenderer`가 `place.mode`에 따라 렌더러 분기
 - `src/lib/modes.ts` — 안내 방식 목록 (map / tile2d / fps3d / video). `ready: false`면 지도로 폴백
 - `src/lib/kakao.ts` — 카카오맵 SDK 로더 + 주소/장소 검색
+- `src/lib/route/` — 공통 경로 JSON(`types.ts`), Tmap 보행자(`tmap.ts`)·OSRM 폴백(`osrm.ts`), `findWalkingRoute`. `/api/route?from=&to=`
+- `src/components/Cover.tsx` — 손님 온보딩 커버 (hostName/eventAt/greeting/imageUrl/theme). 관리자 폼 미리보기에도 재사용
+- `src/lib/supabase.ts` — 서버 전용 Storage 클라이언트 (`covers` 버킷, public). `SUPABASE_URL`/`SUPABASE_SECRET_KEY` 없으면 업로드 비활성
 - `src/lib/db.ts` — Prisma 7 + pg 어댑터 (Supabase Postgres, Session pooler URL). `src/generated/prisma`는 생성물(커밋 안 함)
 
 ## 규칙
@@ -27,7 +30,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - 스키마 변경 시 `npx prisma migrate dev --name <이름>` (로컬도 Supabase DB를 바라봄). 배포 시 `npm start`가 `migrate deploy` 실행
 - 배포: Railway (GitHub 연동, main push → 자동 배포)
 
+- 시간대는 Asia/Seoul 고정 (`formatEventAt`, `toDatetimeLocal`). 폼은 `+09:00` 붙여서 전송
+- 커버 이미지는 클라이언트에서 1600px WebP로 리사이즈 후 폼과 함께 전송 (server action bodySizeLimit 4mb)
+
+## 완료
+1. 도착지 설정/관리/손님 페이지 골격
+2. 도보 경로 탐색 (Tmap/OSRM) + 지도 폴리라인 + 턴바이턴
+3. 온보딩 L1: 커버 화면 (사진·초대자·일시·인사말·테마)
+
 ## 다음 단계
-2. 도보 경로 탐색 API 연동 (카카오는 자동차만 제공 → Tmap 보행자 API 예정) → 공통 경로 JSON
-3. map 모드: polyline + 턴바이턴 목록
-4. tile2d → 5. video → 6. fps3d
+- 온보딩 L2: Claude API로 인사말/테마 생성 (관리자 폼에 버튼)
+- tile2d → video → fps3d 렌더러 (모두 `Route` JSON 소비)

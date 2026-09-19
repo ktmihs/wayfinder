@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AddressSearch from "@/components/AddressSearch";
+import Cover from "@/components/Cover";
 import RouteRenderer from "@/components/RouteRenderer";
 import type { PublicPlace } from "@/lib/places";
 import { coordToRegionName, type SearchResult } from "@/lib/kakao";
@@ -14,6 +15,21 @@ export type Origin = { lat: number; lng: number; label: string };
  * 1) 도착지 정보 확인 → 2) 출발지 입력(검색 or 현재 위치) → 3) 관리자가 고른 방식으로 경로 표시
  */
 export default function GuestView({ place }: { place: PublicPlace }) {
+  // 커버는 탭당 한 번만 보여준다 (뒤로가기/새로고침 때 또 안 뜨게)
+  const coverKey = `cover-seen:${place.id}`;
+  const [started, setStarted] = useState(false);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(coverKey)) setStarted(true);
+    } catch {}
+  }, [coverKey]);
+  function start() {
+    try {
+      sessionStorage.setItem(coverKey, "1");
+    } catch {}
+    setStarted(true);
+  }
+
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -49,6 +65,14 @@ export default function GuestView({ place }: { place: PublicPlace }) {
 
   function pickAddress(r: SearchResult) {
     setOrigin({ lat: r.lat, lng: r.lng, label: r.placeName ?? r.address });
+  }
+
+  if (!started) {
+    return (
+      <main className="mx-auto w-full max-w-md">
+        <Cover data={place} onStart={start} />
+      </main>
+    );
   }
 
   return (

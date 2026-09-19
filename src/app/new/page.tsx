@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PlaceForm from "@/components/PlaceForm";
 import { createPlace } from "@/app/actions";
+import { isStorageConfigured } from "@/lib/supabase";
 
 export const metadata = { title: "새 안내 페이지" };
 
@@ -14,7 +15,7 @@ export default function NewPlacePage() {
       <p className="mt-1 mb-6 text-sm text-neutral-600">
         손님이 도착해야 할 곳과 안내 방식을 정해요.
       </p>
-      <PlaceForm action={createPlace} submitLabel="안내 페이지 만들기" />
+      <PlaceForm action={createPlace} submitLabel="안내 페이지 만들기" storageReady={isStorageConfigured()} />
     </main>
   );
 }
