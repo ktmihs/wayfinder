@@ -1,0 +1,23 @@
+{
+ "palette": {
+  ".": null,
+  "x": "#3d2a2a", "H": "#5a3a2a", "h": "#7a5038", "s": "#f5c9a3", "S": "#e8a883",
+  "e": "#2b1d1d", "c": "#e5484d", "C": "#b93438", "n": "#3b5aa6", "N": "#2a3f77", "b": "#2b1d1d",
+  "r": "#e5484d", "l": "#ffffff"
+ },
+ "character": {
+  "down": [
+   ["................",".....xxxxxx.....","....xHHHHHHx....","...xHHHHHHHHx...","...xHhssssHHx...","...xHssssssHx...","...xsseSSessx...","...xssssssssx...","....xssssssx....",".....xccccx.....","....xccccccx....","...xsxccccxsx...","....xxnnnnxx....",".....xnxxnx.....",".....xbbxbbx....","................"],
+   ["................",".....xxxxxx.....","....xHHHHHHx....","...xHHHHHHHHx...","...xHhssssHHx...","...xHssssssHx...","...xsseSSessx...","...xssssssssx...","....xssssssx....",".....xccccx.....","....xccccccx....","...xsxccccxsx...","....xxnnnnxx....","....xnx..xnx....","....xbbx.xbbx...","................"]
+  ],
+  "up": [
+   ["................",".....xxxxxx.....","....xHHHHHHx....","...xHHHHHHHHx...","...xHHHhHHHHx...","...xHHHHHHHHx...","...xHHHHHHHHx...","...xsHHHHHHsx...","....xssssssx....",".....xccccx.....","....xccccccx....","...xsxccccxsx...","....xxnnnnxx....",".....xnxxnx.....",".....xbbxbbx....","................"],
+   ["................",".....xxxxxx.....","....xHHHHHHx....","...xHHHHHHHHx...","...xHHHhHHHHx...","...xHHHHHHHHx...","...xHHHHHHHHx...","...xsHHHHHHsx...","....xssssssx....",".....xccccx.....","....xccccccx....","...xsxccccxsx...","....xxnnnnxx....","....xnx..xnx....","....xbbx.xbbx...","................"]
+  ],
+  "right": [
+   ["................",".....xxxxxx.....","....xHHHHHHx....","...xHHHHHHHHx...","...xHHHhssssx...","...xHHHsssssx...","...xHHsseSsex...","...xHssssssSx...","....xssssssx....",".....xccccx.....","....xccccccx....","....xccccxsx....","....xxnnnnxx....",".....xnxxnx.....",".....xbbxbbx....","................"],
+   ["................",".....xxxxxx.....","....xHHHHHHx....","...xHHHHHHHHx...","...xHHHhssssx...","...xHHHsssssx...","...xHHsseSsex...","...xHssssssSx...","....xssssssx....",".....xccccx.....","....xccccccx....","....xccccxsx....","....xxnnnnxx....","....xnx..xnx....","....xbbx.xbbx...","................"]
+  ]
+ },
+ "heart": ["................","................","....rrr..rrr....","...rrrrrrrrrrr..","...rlrrrrrrrr...","...rrrrrrrrrr...","....rrrrrrrr....",".....rrrrrr.....","......rrrr......",".......rr.......","................","................","................","................","................","................"]
+}

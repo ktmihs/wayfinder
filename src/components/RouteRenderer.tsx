@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import KakaoMap from "@/components/KakaoMap";
+import TileView from "@/components/tile2d/TileView";
 import RouteSteps, { TURN_ICON } from "@/components/RouteSteps";
 import { useRoute } from "@/lib/route/useRoute";
 import { distanceM, nearestPathIndex, remainingDistance, useLiveLocation } from "@/lib/geo";
@@ -36,6 +37,10 @@ export default function RouteRenderer({ mode, place, origin, onReroute }: Props)
   );
   const info = getMode(mode);
   const { status, route, error } = useRoute(origin, destination);
+
+  // tile2d 모드에서 잠깐 지도로 전환
+  const [showMap, setShowMap] = useState(false);
+  const useTile = mode === "tile2d" && !!route && !showMap;
 
   // 실시간 안내
   const [navigating, setNavigating] = useState(false);
@@ -104,14 +109,23 @@ export default function RouteRenderer({ mode, place, origin, onReroute }: Props)
       )}
 
       <div className="relative">
-        <KakaoMap
-          destination={destination}
-          origin={origin}
-          path={route?.path}
-          me={me}
-          follow={navigating && follow}
-          className={origin ? "h-[45vh]" : "h-[55vh]"}
-        />
+        {useTile ? (
+          <TileView
+            route={route}
+            seed={place.id}
+            me={navigating ? me : null}
+            className={origin ? "h-[45vh]" : "h-[55vh]"}
+          />
+        ) : (
+          <KakaoMap
+            destination={destination}
+            origin={origin}
+            path={route?.path}
+            me={me}
+            follow={navigating && follow}
+            className={origin ? "h-[45vh]" : "h-[55vh]"}
+          />
+        )}
 
         {status === "loading" && (
           <div className="absolute inset-x-0 top-3 flex justify-center">
@@ -193,7 +207,7 @@ export default function RouteRenderer({ mode, place, origin, onReroute }: Props)
         )}
 
         {/* 따라가기 토글 (지도를 손으로 움직인 뒤 다시 돌아올 때) */}
-        {navigating && me && (
+        {navigating && me && !useTile && (
           <button
             type="button"
             onClick={() => setFollow((f) => !f)}
@@ -213,6 +227,27 @@ export default function RouteRenderer({ mode, place, origin, onReroute }: Props)
       )}
       {status === "error" && (
         <p className="mx-5 my-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>
+      )}
+
+      {mode === "tile2d" && route && (
+        <div className="flex justify-center px-5 pt-3">
+          <div className="inline-flex rounded-full bg-neutral-100 p-1 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setShowMap(false)}
+              className={`rounded-full px-3 py-1.5 ${!showMap ? "bg-white text-neutral-900 shadow" : "text-neutral-500"}`}
+            >
+              🕹️ 마을 지도
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMap(true)}
+              className={`rounded-full px-3 py-1.5 ${showMap ? "bg-white text-neutral-900 shadow" : "text-neutral-500"}`}
+            >
+              🗺️ 실제 지도
+            </button>
+          </div>
+        </div>
       )}
 
       {route && (

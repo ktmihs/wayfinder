@@ -13,7 +13,7 @@ export const MODES = [
     label: "2D 타일 맵",
     description: "픽셀 타일 지도 위를 캐릭터가 걸어가며 길을 알려줘요.",
     emoji: "🕹️",
-    ready: false,
+    ready: true,
   },
   {
     id: "fps3d",
