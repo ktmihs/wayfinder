@@ -17,6 +17,9 @@ export const TURN_ICON: Record<TurnKind, string> = {
   overpass: "🌉",
   underpass: "🚇",
   elevator: "🛗",
+  walk: "🚶",
+  bus: "🚌",
+  subway: "🚇",
   unknown: "•",
 };
 
@@ -32,7 +35,11 @@ export default function RouteSteps({ route, currentStep }: Props) {
     <div className="px-5 py-4">
       <div className="flex items-baseline gap-3">
         <span className="text-2xl font-bold">{formatDuration(route.duration)}</span>
-        <span className="text-sm text-neutral-500">도보 {formatDistance(route.distance)}</span>
+        <span className="text-sm text-neutral-500">
+          {route.travel === "transit" ? "대중교통" : "도보"} {formatDistance(route.distance)}
+          {route.fare != null && ` · ${route.fare.toLocaleString()}원`}
+          {route.transfers != null && route.transfers > 0 && ` · 환승 ${route.transfers}회`}
+        </span>
         {route.provider === "osrm" && (
           <span
             className="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700"
@@ -42,6 +49,26 @@ export default function RouteSteps({ route, currentStep }: Props) {
           </span>
         )}
       </div>
+
+      {route.legs && route.legs.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {route.legs.map((l, i) => (
+            <span key={i} className="flex items-center gap-1.5">
+              {i > 0 && <span className="text-neutral-300">›</span>}
+              {l.mode === "walk" ? (
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">🚶 {formatDistance(l.distance)}</span>
+              ) : (
+                <span
+                  className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+                  style={{ background: l.color ?? (l.mode === "subway" ? "#0052a4" : "#3d8f3d") }}
+                >
+                  {l.mode === "subway" ? "🚇" : "🚌"} {l.name}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       <ol className="mt-4 space-y-1">
         {route.steps.map((s, i) => {

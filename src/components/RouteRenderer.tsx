@@ -15,13 +15,16 @@ import type { PublicPlace } from "@/lib/places";
 import type { ModeId } from "@/lib/modes";
 import { getMode } from "@/lib/modes";
 import type { Origin } from "@/components/GuestView";
-import type { LatLng } from "@/lib/route/types";
+import type { LatLng, TravelMode } from "@/lib/route/types";
 
 type Props = {
   /** 관리자가 허용한 안내 방식들. 손님이 이 중 하나를 고른다 */
   modes: ModeId[];
   place: PublicPlace;
   origin: Origin | null;
+  travel: TravelMode;
+  /** 대중교통 안내가 불가능할 때 도보로 되돌리기 */
+  onTravelFallback: () => void;
   /** 경로 이탈 시 현재 위치를 새 출발지로 요청 */
   onReroute: (pos: LatLng) => void;
 };
@@ -35,16 +38,18 @@ const OFF_ROUTE_ASK_MS = 10_000; // GPS 튐을 걸러내기 위해 이만큼 계
  * 지금은 "map"만 구현되어 있고, 나머지는 준비 중 안내 후 지도로 대체한다.
  * 모든 렌더러는 useRoute 가 돌려주는 공통 Route JSON 을 소비한다.
  */
-export default function RouteRenderer({ modes, place, origin, onReroute }: Props) {
+export default function RouteRenderer({ modes, place, origin, travel, onTravelFallback, onReroute }: Props) {
   const [mode, setMode] = useState<ModeId>(modes[0]);
   const destination = useMemo(
     () => ({ lat: place.lat, lng: place.lng, label: place.placeName ?? undefined }),
     [place.lat, place.lng, place.placeName],
   );
   const info = getMode(mode);
-  const { status, route, error } = useRoute(origin, destination);
+  const { status, route, error, ...routeState } = useRoute(origin, destination, travel);
+  const errorCode = "code" in routeState ? routeState.code : undefined;
 
-  const useTile = mode === "tile2d" && !!route;
+  // 타일 마을 지도는 도보 경로만 (대중교통은 수십 km 라 격자가 너무 커진다)
+  const useTile = mode === "tile2d" && !!route && route.travel === "walk";
   const useCharacter = mode === "character" && !!route;
 
   // 실시간 안내
@@ -142,6 +147,7 @@ export default function RouteRenderer({ modes, place, origin, onReroute }: Props
             destination={destination}
             origin={origin}
             path={route?.path}
+            legs={route?.legs}
             me={me}
             follow={navigating && follow}
             character={character}
@@ -280,7 +286,19 @@ export default function RouteRenderer({ modes, place, origin, onReroute }: Props
         </p>
       )}
       {status === "error" && (
-        <p className="mx-5 my-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>
+        <div className="mx-5 my-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+          {errorCode === "TRANSIT_UNAVAILABLE" && (
+            <button type="button" onClick={onTravelFallback} className="mt-2 block font-semibold underline">
+              도보로 보기
+            </button>
+          )}
+        </div>
+      )}
+      {mode === "tile2d" && route?.travel === "transit" && (
+        <p className="mx-5 my-3 rounded-xl bg-neutral-100 px-4 py-2.5 text-xs text-neutral-600">
+          🕹️ 마을 지도는 도보 경로에서만 볼 수 있어요. 대중교통은 실제 지도로 보여드려요.
+        </p>
       )}
 
       {/* 안내 방식 선택 (관리자가 여러 개 허용했을 때) */}

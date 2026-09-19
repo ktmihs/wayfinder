@@ -37,6 +37,9 @@ const KO: Record<TurnKind, string> = {
   overpass: "육교",
   underpass: "지하보도",
   elevator: "엘리베이터",
+  walk: "도보",
+  bus: "버스",
+  subway: "지하철",
   unknown: "이동",
 };
 
@@ -82,6 +85,7 @@ export async function osrmFoot(from: LatLng, to: LatLng): Promise<Route> {
 
   return {
     provider: "osrm",
+    travel: "walk",
     distance: r.distance,
     duration: Math.round(r.distance / WALK_SPEED_MPS),
     path,

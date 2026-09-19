@@ -14,6 +14,8 @@ type Props = {
   origin?: MapPoint | null;
   /** 경로 좌표. 있으면 폴리라인으로 그리고 경로 전체가 보이게 맞춤 */
   path?: LatLng[] | null;
+  /** 구간별 스타일 (대중교통). 없으면 path 전체를 도보 스타일로 */
+  legs?: Array<{ pathStart: number; pathEnd: number; color?: string; mode: "walk" | "bus" | "subway" | "other" }> | null;
   /** 실시간 내 위치. 파란 점 + 정확도 원 */
   me?: (LatLng & { accuracy: number; heading: number | null }) | null;
   /** true면 내 위치가 바뀔 때마다 지도를 따라 움직인다 */
@@ -29,7 +31,7 @@ type Props = {
  * 카카오맵을 띄우고 출발/도착 마커를 그린다.
  * 경로(polyline)는 2단계에서 이 컴포넌트 위에 얹는다.
  */
-export default function KakaoMap({ destination, origin, path, me, follow, character, followCharacter, className }: Props) {
+export default function KakaoMap({ destination, origin, path, legs, me, follow, character, followCharacter, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<Array<{ setMap(map: kakao.maps.Map | null): void }>>([]);
@@ -93,17 +95,25 @@ export default function KakaoMap({ destination, origin, path, me, follow, charac
 
       if (path && path.length > 1) {
         const latlngs = path.map((p) => new k.maps.LatLng(p.lat, p.lng));
-        // 흰 테두리 + 파란 선, 두 겹으로 그려서 지도 위에서 잘 보이게
-        const outline = new k.maps.Polyline({
-          path: latlngs, strokeWeight: 9, strokeColor: "#ffffff", strokeOpacity: 0.9, strokeStyle: "solid",
-        });
-        const line = new k.maps.Polyline({
-          path: latlngs, strokeWeight: 5, strokeColor: "#2563eb", strokeOpacity: 1, strokeStyle: "solid",
-        });
-        outline.setMap(map);
-        line.setMap(map);
-        overlaysRef.current.push(outline, line);
         latlngs.forEach((ll) => bounds.extend(ll));
+        // 구간별로: 도보는 파란 점선, 버스/지하철은 노선색 실선. 흰 테두리를 깔아 지도 위에서 잘 보이게
+        const segs = legs?.length
+          ? legs.map((l) => ({ pts: latlngs.slice(l.pathStart, l.pathEnd + 1), mode: l.mode, color: l.color }))
+          : [{ pts: latlngs, mode: "walk" as const, color: undefined }];
+        for (const sg of segs) {
+          if (sg.pts.length < 2) continue;
+          const walk = sg.mode === "walk";
+          const color = walk ? "#2563eb" : (sg.color ?? (sg.mode === "subway" ? "#0052a4" : "#3d8f3d"));
+          const outline = new k.maps.Polyline({
+            path: sg.pts, strokeWeight: walk ? 8 : 10, strokeColor: "#ffffff", strokeOpacity: 0.9, strokeStyle: "solid",
+          });
+          const line = new k.maps.Polyline({
+            path: sg.pts, strokeWeight: walk ? 4 : 6, strokeColor: color, strokeOpacity: 1, strokeStyle: walk && legs?.length ? "shortdash" : "solid",
+          });
+          outline.setMap(map);
+          line.setMap(map);
+          overlaysRef.current.push(outline, line);
+        }
       }
 
       if (points.length > 1) {
@@ -116,7 +126,7 @@ export default function KakaoMap({ destination, origin, path, me, follow, charac
     // 객체 identity 가 아니라 좌표 값이 바뀔 때만 다시 그린다.
     // (렌더마다 새 객체가 넘어와도 setBounds 가 반복 호출되어 지도가 튕기지 않도록)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination.lat, destination.lng, destination.label, origin?.lat, origin?.lng, origin?.label, path]);
+  }, [destination.lat, destination.lng, destination.label, origin?.lat, origin?.lng, origin?.label, path, legs]);
 
   // 내 위치 점: 경로/마커와 별도로 관리해서 위치 갱신 때 전체를 다시 그리지 않는다
   useEffect(() => {

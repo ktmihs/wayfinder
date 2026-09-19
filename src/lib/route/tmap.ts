@@ -104,5 +104,5 @@ export async function tmapPedestrian(from: LatLng, to: LatLng): Promise<Route> {
     }
   }
 
-  return { provider: "tmap", distance, duration, path, steps };
+  return { provider: "tmap", travel: "walk", distance, duration, path, steps };
 }

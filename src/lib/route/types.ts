@@ -33,10 +33,33 @@ export type TurnKind =
   | "overpass"
   | "underpass"
   | "elevator"
+  | "walk"
+  | "bus"
+  | "subway"
   | "unknown";
+
+export type TravelMode = "walk" | "transit";
+
+/** 대중교통 경로의 구간. path 의 [pathStart, pathEnd] 범위를 차지한다 */
+export type RouteLeg = {
+  mode: "walk" | "bus" | "subway" | "other";
+  /** 노선명: "2호선", "146" */
+  name?: string;
+  /** 노선 색 (#rrggbb) */
+  color?: string;
+  from: string;
+  to: string;
+  distance: number;
+  duration: number;
+  pathStart: number;
+  pathEnd: number;
+  /** 정거장 수 (대중교통 구간) */
+  stops?: number;
+};
 
 export type Route = {
   provider: "tmap" | "osrm";
+  travel: TravelMode;
   /** 총 거리(m) */
   distance: number;
   /** 총 소요 시간(초) */
@@ -44,6 +67,10 @@ export type Route = {
   /** 경로 전체 좌표. 폴리라인/캐릭터 이동에 사용 */
   path: LatLng[];
   steps: RouteStep[];
+  /** 대중교통일 때만 */
+  legs?: RouteLeg[];
+  fare?: number;
+  transfers?: number;
 };
 
 export type RouteProvider = (from: LatLng, to: LatLng) => Promise<Route>;

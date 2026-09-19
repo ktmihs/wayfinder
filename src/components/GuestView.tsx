@@ -7,6 +7,8 @@ import RouteRenderer from "@/components/RouteRenderer";
 import type { PublicPlace } from "@/lib/places";
 import { coordToRegionName, type SearchResult } from "@/lib/kakao";
 import { parseModes } from "@/lib/modes";
+import { distanceM } from "@/lib/geo";
+import type { TravelMode } from "@/lib/route/types";
 
 export type Origin = { lat: number; lng: number; label: string };
 
@@ -20,6 +22,10 @@ export default function GuestView({ place }: { place: PublicPlace }) {
   const start = () => setStarted(true);
 
   const [origin, setOrigin] = useState<Origin | null>(null);
+  // 이동 수단: 손님이 고른다. 출발지가 2.5km 넘게 멀면 대중교통을 기본으로 제안
+  const [travel, setTravel] = useState<TravelMode | null>(null);
+  const effectiveTravel: TravelMode =
+    travel ?? (origin && distanceM(origin, { lat: place.lat, lng: place.lng }) > 2500 ? "transit" : "walk");
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const modes = parseModes(place.modes);
@@ -98,9 +104,23 @@ export default function GuestView({ place }: { place: PublicPlace }) {
         </button>
         {geoError && <p className="mt-2 text-xs text-rose-600">{geoError}</p>}
         {origin && (
-          <p className="mt-2 text-xs text-neutral-500">
-            출발: <span className="font-medium text-neutral-800">{origin.label}</span>
-          </p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate text-xs text-neutral-500">
+              출발: <span className="font-medium text-neutral-800">{origin.label}</span>
+            </p>
+            <div className="inline-flex shrink-0 rounded-full bg-neutral-100 p-1 text-xs font-semibold">
+              {(["walk", "transit"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTravel(t)}
+                  className={`rounded-full px-3 py-1.5 ${effectiveTravel === t ? "bg-white text-neutral-900 shadow" : "text-neutral-500"}`}
+                >
+                  {t === "walk" ? "🚶 도보" : "🚌 대중교통"}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </section>
 
@@ -110,6 +130,8 @@ export default function GuestView({ place }: { place: PublicPlace }) {
           modes={modes}
           place={place}
           origin={origin}
+          travel={effectiveTravel}
+          onTravelFallback={() => setTravel("walk")}
           onReroute={(p) => setOrigin({ ...p, label: "현재 위치" })}
         />
       </section>

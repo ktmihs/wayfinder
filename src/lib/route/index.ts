@@ -1,6 +1,7 @@
 import { tmapPedestrian } from "./tmap";
+import { tmapTransit } from "./tmapTransit";
 import { osrmFoot } from "./osrm";
-import type { LatLng, Route } from "./types";
+import type { LatLng, Route, TravelMode } from "./types";
 
 export type * from "./types";
 
@@ -29,4 +30,22 @@ export function haversine(a: LatLng, b: LatLng) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** 대중교통 경로. Tmap 전용 (폴백 없음) */
+export async function findTransitRoute(from: LatLng, to: LatLng): Promise<Route> {
+  if (!process.env.TMAP_APP_KEY) throw new TransitUnavailable("대중교통 안내는 아직 준비 중이에요. 도보로 안내해 드릴게요.");
+  try {
+    return await tmapTransit(from, to);
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (/403|INVALID_API_KEY/.test(msg)) throw new TransitUnavailable("대중교통 안내는 아직 준비 중이에요. 도보로 안내해 드릴게요.");
+    throw e;
+  }
+}
+
+export class TransitUnavailable extends Error {}
+
+export function findRoute(from: LatLng, to: LatLng, travel: TravelMode) {
+  return travel === "transit" ? findTransitRoute(from, to) : findWalkingRoute(from, to);
 }
