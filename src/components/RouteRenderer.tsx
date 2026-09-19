@@ -31,6 +31,11 @@ export default function RouteRenderer({ mode, place, origin }: Props) {
   const [follow, setFollow] = useState(true);
   const { pos: me, error: geoError } = useLiveLocation(navigating);
 
+  function stopNavigating() {
+    setNavigating(false);
+    setFollow(true);
+  }
+
   // 내 위치 → 경로상 위치 → 현재 구간 / 남은 거리 / 도착 여부
   const nav = useMemo(() => {
     if (!route || !me) return null;
@@ -77,17 +82,25 @@ export default function RouteRenderer({ mode, place, origin }: Props) {
           </div>
         )}
 
-        {/* 실시간 안내 배너 */}
+        {/* 실시간 안내 배너 — 오른쪽 ✕ 로 언제든 종료 */}
         {navigating && (
           <div className="absolute inset-x-3 top-3">
-            {nav?.arrived ? (
-              <div className="rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-lg">
-                <p className="text-lg font-bold">도착했어요 🎉</p>
-                {place.detail && <p className="mt-0.5 text-sm opacity-90">아래 도착 안내를 확인하세요</p>}
-              </div>
-            ) : nav ? (
-              <div className="rounded-2xl bg-neutral-900/95 px-4 py-3 text-white shadow-lg">
-                <div className="flex items-center gap-3">
+            <div
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-lg ${
+                nav?.arrived
+                  ? "bg-emerald-600 text-white"
+                  : nav
+                    ? "bg-neutral-900/95 text-white"
+                    : "bg-white/95 text-neutral-700"
+              }`}
+            >
+              {nav?.arrived ? (
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-bold">도착했어요 🎉</p>
+                  {place.detail && <p className="mt-0.5 text-sm opacity-90">아래 도착 안내를 확인하세요</p>}
+                </div>
+              ) : nav ? (
+                <>
                   <span className="text-3xl leading-none">{TURN_ICON[nav.next.turn]}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-base font-semibold">{nav.next.description}</p>
@@ -96,13 +109,19 @@ export default function RouteRenderer({ mode, place, origin }: Props) {
                       {nav.offRoute && " · 경로에서 벗어났어요"}
                     </p>
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-white/95 px-4 py-3 text-sm text-neutral-700 shadow-lg">
-                {geoError ?? "내 위치를 찾는 중… 📡"}
-              </div>
-            )}
+                </>
+              ) : (
+                <p className="min-w-0 flex-1 text-sm">{geoError ?? "내 위치를 찾는 중… 📡"}</p>
+              )}
+              <button
+                type="button"
+                onClick={stopNavigating}
+                aria-label="실시간 안내 종료"
+                className="shrink-0 rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold hover:bg-white/30"
+              >
+                종료 ✕
+              </button>
+            </div>
           </div>
         )}
 
@@ -134,8 +153,11 @@ export default function RouteRenderer({ mode, place, origin }: Props) {
           <button
             type="button"
             onClick={() => {
-              setNavigating((v) => !v);
-              setFollow(true);
+              if (navigating) stopNavigating();
+              else {
+                setNavigating(true);
+                setFollow(true);
+              }
             }}
             className={`w-full rounded-xl py-3 text-sm font-semibold transition active:scale-[0.99] ${
               navigating
