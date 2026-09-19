@@ -23,13 +23,25 @@ type Props = {
 export default function Cover({ data, onStart, preview }: Props) {
   const t = getTheme(data.theme);
   const when = formatEventAt(data.eventAt);
+  const photoBg = !!t.photoBg && !!data.imageUrl;
 
   return (
     <div
-      className={`flex flex-col ${preview ? "min-h-[420px]" : "min-h-dvh"}`}
+      className={`relative flex flex-col overflow-hidden ${preview ? "min-h-[420px]" : "min-h-dvh"}`}
       style={{ background: `linear-gradient(160deg, ${t.from}, ${t.to})`, color: t.text }}
     >
-      {data.imageUrl ? (
+      {/* 사진 배경 테마: 사진을 전체에 깔고 반투명 흰 막 */}
+      {photoBg && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={data.imageUrl!} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-white/70" />
+        </>
+      )}
+
+      {photoBg ? (
+        <div className={preview ? "h-16" : "h-[22vh]"} />
+      ) : data.imageUrl ? (
         <div className={`relative w-full overflow-hidden ${preview ? "aspect-[4/3]" : "aspect-[4/3] max-h-[48vh]"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={data.imageUrl} alt="" className="h-full w-full object-cover" />
@@ -46,7 +58,7 @@ export default function Cover({ data, onStart, preview }: Props) {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col px-6 pb-8">
+      <div className="relative flex flex-1 flex-col px-6 pb-8">
         {data.hostName && (
           <p className="text-sm font-medium" style={{ opacity: t.overlay ? 0.9 : 0.6 }}>{data.hostName}님의 초대</p>
         )}

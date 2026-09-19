@@ -1,6 +1,8 @@
 // 커버 화면 색상 테마. 관리자가 고르고, 손님 커버의 배경/버튼 색과 공유 미리보기에 쓰인다.
 // overlay: 사진 아래쪽에 배경색으로 이어지는 그라데이션을 씌울지. 무채색 테마는 사진을 그대로 둔다.
+// photoBg: 사진을 화면 전체 배경으로 깔고 반투명 흰 막을 씌운 뒤 그 위에 글을 얹는다 (사진 없으면 화이트와 동일).
 export const THEMES = {
+  photo: { label: "사진 배경", from: "#ffffff", to: "#ffffff", text: "#171717", swatch: "#e5e5e5", overlay: false, photoBg: true },
   white: { label: "화이트", from: "#ffffff", to: "#ffffff", text: "#171717", swatch: "#ffffff", overlay: false },
   cream: { label: "크림", from: "#faf6ef", to: "#f3ecdf", text: "#2b2520", swatch: "#f3ecdf", overlay: false },
   rose: { label: "로즈", from: "#fb7185", to: "#f43f5e", text: "#ffffff", swatch: "#f43f5e", overlay: true },
@@ -17,7 +19,7 @@ export function isThemeId(v: string): v is ThemeId {
   return v in THEMES;
 }
 
-export function getTheme(id: string) {
+export function getTheme(id: string): (typeof THEMES)[ThemeId] & { photoBg?: boolean } {
   return isThemeId(id) ? THEMES[id] : THEMES.rose;
 }
 

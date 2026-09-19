@@ -14,6 +14,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   const place = await getPlaceById(id);
   const t = getTheme(place?.theme ?? "rose");
   const when = formatEventAt(place?.eventAt);
+  const photoBg = !!t.photoBg && !!place?.imageUrl;
 
   return new ImageResponse(
     (
@@ -22,12 +23,26 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
           width: "100%",
           height: "100%",
           display: "flex",
+          position: "relative",
           background: `linear-gradient(135deg, ${t.from}, ${t.to})`,
           color: t.text,
           fontFamily: "sans-serif",
         }}
       >
-        {place?.imageUrl && (
+        {photoBg && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={place!.imageUrl!}
+            alt=""
+            width={1200}
+            height={630}
+            style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, objectFit: "cover" }}
+          />
+        )}
+        {photoBg && (
+          <div style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, background: "rgba(255,255,255,0.74)", display: "flex" }} />
+        )}
+        {!photoBg && place?.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={place.imageUrl}
@@ -44,6 +59,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
             flexDirection: "column",
             justifyContent: "center",
             padding: "64px 72px",
+            position: "relative",
           }}
         >
           <div style={{ fontSize: 28, opacity: 0.9, display: "flex" }}>
