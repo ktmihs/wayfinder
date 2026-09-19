@@ -62,7 +62,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
               display: "flex",
               alignSelf: "flex-start",
               background: t.text,
-              color: t.to,
+              color: t.overlay ? t.to : "#ffffff",
               borderRadius: 999,
               padding: "16px 32px",
               fontSize: 26,

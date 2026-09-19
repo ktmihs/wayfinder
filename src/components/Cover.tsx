@@ -33,10 +33,12 @@ export default function Cover({ data, onStart, preview }: Props) {
         <div className={`relative w-full overflow-hidden ${preview ? "aspect-[4/3]" : "aspect-[4/3] max-h-[48vh]"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={data.imageUrl} alt="" className="h-full w-full object-cover" />
-          <div
-            className="absolute inset-x-0 bottom-0 h-24"
-            style={{ background: `linear-gradient(to bottom, transparent, ${t.from})` }}
-          />
+          {t.overlay && (
+            <div
+              className="absolute inset-x-0 bottom-0 h-24"
+              style={{ background: `linear-gradient(to bottom, transparent, ${t.from})` }}
+            />
+          )}
         </div>
       ) : (
         <div className={`flex items-center justify-center ${preview ? "h-28" : "h-[30vh]"}`}>
@@ -46,7 +48,7 @@ export default function Cover({ data, onStart, preview }: Props) {
 
       <div className="flex flex-1 flex-col px-6 pb-8">
         {data.hostName && (
-          <p className="text-sm font-medium opacity-90">{data.hostName}님의 초대</p>
+          <p className="text-sm font-medium" style={{ opacity: t.overlay ? 0.9 : 0.6 }}>{data.hostName}님의 초대</p>
         )}
         <h1 className={`mt-1 font-bold leading-tight ${preview ? "text-2xl" : "text-3xl"}`}>{data.name}</h1>
         {when && <p className="mt-2 text-base font-medium opacity-95">{when}</p>}
@@ -62,8 +64,8 @@ export default function Cover({ data, onStart, preview }: Props) {
           type="button"
           onClick={onStart}
           disabled={preview}
-          className="mt-8 w-full rounded-xl py-3.5 text-base font-semibold shadow-lg transition active:scale-[0.99]"
-          style={{ background: t.text, color: t.to }}
+          className={`mt-8 w-full rounded-xl py-3.5 text-base font-semibold transition active:scale-[0.99] ${t.overlay ? "shadow-lg" : "shadow-md"}`}
+          style={{ background: t.text, color: t.overlay ? t.to : "#ffffff" }}
         >
           오시는 길 보기 →
         </button>

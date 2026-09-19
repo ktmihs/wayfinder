@@ -18,9 +18,9 @@ export default function ThemePicker({ value, onChange }: Props) {
             aria-pressed={selected}
             aria-label={t.label}
             title={t.label}
-            className={`h-9 w-9 rounded-full ring-2 ring-offset-2 transition ${
+            className={`h-9 w-9 rounded-full border ring-2 ring-offset-2 transition ${
               selected ? "ring-neutral-900" : "ring-transparent hover:ring-neutral-300"
-            }`}
+            } ${t.overlay ? "border-transparent" : "border-neutral-300"}`}
             style={{ background: `linear-gradient(135deg, ${t.from}, ${t.to})` }}
           />
         );
