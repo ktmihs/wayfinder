@@ -4,6 +4,8 @@ import { createPlace } from "@/app/actions";
 import { isStorageConfigured } from "@/lib/supabase";
 
 export const metadata = { title: "새 안내 페이지" };
+// 저장소 설정 여부를 빌드 시점이 아니라 요청 시점에 읽는다
+export const dynamic = "force-dynamic";
 
 export default function NewPlacePage() {
   return (
