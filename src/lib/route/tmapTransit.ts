@@ -11,7 +11,8 @@ type TmapLeg = {
   end: { name: string; lon: number; lat: number };
   route?: string;
   routeColor?: string;
-  passStopList?: { stationList: Array<{ stationName: string; lon: string; lat: string }> };
+  // 문서에는 stationList 로 되어 있지만 실제 응답은 stations 다. 둘 다 받는다.
+  passStopList?: { stations?: Array<{ stationName: string; lon: string; lat: string }>; stationList?: Array<{ stationName: string; lon: string; lat: string }> };
   passShape?: { linestring: string };
   steps?: Array<{ streetName?: string; distance: number; description: string; linestring?: string }>;
 };
@@ -41,6 +42,18 @@ function parseLine(s: string | undefined): LatLng[] {
     .map((pair) => pair.split(",").map(Number))
     .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat))
     .map(([lng, lat]) => ({ lat, lng }));
+}
+
+/** "간선:402" → "402", "수도권9호선(급행)" → "9호선(급행)" */
+function cleanRouteName(name: string | undefined, mode: RouteLeg["mode"]) {
+  if (!name) return undefined;
+  if (mode === "bus") return name.replace(/^[^:]+:/, "");
+  return name.replace(/^수도권/, "");
+}
+
+function stationCount(leg: TmapLeg) {
+  const list = leg.passStopList?.stations ?? leg.passStopList?.stationList;
+  return list?.length ? list.length - 1 : undefined;
 }
 
 function legMode(m: TmapLeg["mode"]): RouteLeg["mode"] {
@@ -113,7 +126,7 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
         }
       }
       pushPath([endPt]);
-      if (!leg.steps?.length) {
+      if (!leg.steps?.length && leg.distance > 0) {
         steps.push({
           description: `${leg.end.name}까지 도보`,
           distance: leg.distance,
@@ -127,9 +140,10 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
       const idx = Math.max(0, path.length - 1);
       const line = parseLine(leg.passShape?.linestring);
       pushPath(line.length ? line : [startPt, endPt]);
-      const stops = leg.passStopList?.stationList?.length ? leg.passStopList.stationList.length - 1 : undefined;
+      const stops = stationCount(leg);
+      const name = cleanRouteName(leg.route, mode);
       steps.push({
-        description: `${leg.route ?? (mode === "subway" ? "지하철" : "버스")} 탑승 · ${leg.start.name} → ${leg.end.name}${stops ? ` (${stops}정거장)` : ""}`,
+        description: `${name ? (mode === "bus" ? `${name}번 버스` : name) : mode === "subway" ? "지하철" : "버스"} 탑승 · ${leg.start.name} → ${leg.end.name}${stops ? ` (${stops}정거장)` : ""}`,
         distance: leg.distance,
         lat: startPt.lat,
         lng: startPt.lng,
@@ -140,7 +154,7 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
 
     legs.push({
       mode,
-      name: leg.route ?? undefined,
+      name: cleanRouteName(leg.route, mode),
       color: leg.routeColor ? `#${leg.routeColor.replace("#", "")}` : undefined,
       from: leg.start.name,
       to: leg.end.name,
@@ -148,7 +162,7 @@ export async function tmapTransit(from: LatLng, to: LatLng): Promise<Route> {
       duration: leg.sectionTime,
       pathStart,
       pathEnd: Math.max(pathStart, path.length - 1),
-      stops: leg.passStopList?.stationList?.length ? leg.passStopList.stationList.length - 1 : undefined,
+      stops: stationCount(leg),
     });
   }
 
