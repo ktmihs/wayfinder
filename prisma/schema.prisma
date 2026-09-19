@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 관리자(집주인)가 만든 "목적지 안내 페이지" 하나.
+// - id       : 공유용 짧은 ID  (/go/[id])   → 손님에게 QR/URL로 배포
+// - adminKey : 비밀 관리 키    (/admin/[adminKey]) → 관리자만 알고 있음
+model Place {
+  id          String   @id
+  adminKey    String   @unique
+  name        String            // 예: "민수네 집들이"
+  address     String            // 지번 or 도로명 주소 (표시용)
+  roadAddress String?           // 도로명 주소 (있으면)
+  placeName   String?           // 건물/장소 이름 (카카오 검색 결과)
+  detail      String?           // 동/호수, 공동현관 비밀번호 등 도착 후 안내
+  lat         Float
+  lng         Float
+  mode        String   @default("map") // map | tile2d | fps3d | video
+  config      String   @default("{}")  // 모드별 추가 설정 (JSON)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
