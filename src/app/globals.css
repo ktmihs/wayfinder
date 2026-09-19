@@ -24,3 +24,20 @@ textarea,
 select {
   font-size: 16px;
 }
+
+/* iOS 사파리에서 date/datetime-local 인풋이 내용 크기로 줄어들고 값이 가운데 정렬되는 문제 */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 100%;
+  min-height: 3.25rem; /* 다른 인풋(py-3 + text-base)과 같은 높이 */
+  text-align: left;
+}
+input::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.5em;
+}
